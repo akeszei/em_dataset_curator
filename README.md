@@ -1,5 +1,5 @@
 # em_dataset_curator
-Designed to be used after running `mrc2img.py` across a dataset to generate small, portable `.jpg` images of a large EM dataset from which a user can quickly curate both images and particle coordinates (after autopicking, for example). `em_dataset_curator.py` provides a simple GUI interface that handles all image loading and curation markup. Accessory scripts include a very simple autopicker (`peak_finder.py`) and scripts for common post-curation activities (such as using the `marked_imgs.txt` file to unselect a images in a `relion` processing pipeline; these are all a work-in-progress at the moment).
+Designed to be used after running `mrc2img.py` across a dataset to generate small, portable reference dataset of `.jpg` images from which a user can quickly curate micrograph quality and particle coordinates. `em_dataset_curator.py` provides a simple GUI interface that handles all image loading and curation markup. Accessory scripts include a very simple autopicker (`peak_finder.py`) and scripts for common post-curation activities (such as using the `marked_imgs.txt` file to unselect a images in a `relion` processing pipeline; these are all a work-in-progress at the moment).
 
 ## Usage
 
