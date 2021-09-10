@@ -360,8 +360,9 @@ class Gui:
         """
         global img_pixel_size_x, img_pixel_size_y, mrc_pixel_size_x, mrc_pixel_size_y
 
-        ### invert y-axis to match GIF image coordinate conventions
-        inverted_star_coord = ( star_coord[0], mrc_pixel_size_y - star_coord[1] )
+        ### invert y-axis to match GIF image coordinate conventions ## 2021-09-10: WRONG implementation, do not invert here!
+        # inverted_star_coord = ( star_coord[0], mrc_pixel_size_y - star_coord[1] )
+        inverted_star_coord = ( star_coord[0], star_coord[1] )
 
         scale_factor_x = img_pixel_size_x / mrc_pixel_size_x # later I should make this an input parameter to avoid unccessary recalculation
         scale_factor_y = img_pixel_size_y / mrc_pixel_size_y
