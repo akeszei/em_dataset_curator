@@ -350,7 +350,9 @@ class Gui:
         rescaled_gif_coordinate_y = int(gif_coord[1] * scale_factor)
 
         ### invert y-axis to match RELION image coordinate convention
-        inverted_rescaled_gif_coordinate_y = mrc_pixel_size_y - rescaled_gif_coordinate_y
+        ## 2021-09-10: WRONG implementation, RELION v.3.1 no longer inverts y-axis on .STAR data?
+        # inverted_rescaled_gif_coordinate_y = mrc_pixel_size_y - rescaled_gif_coordinate_y
+        inverted_rescaled_gif_coordinate_y = rescaled_gif_coordinate_y
 
         return (rescaled_gif_coordinate_x, inverted_rescaled_gif_coordinate_y)
 
@@ -360,7 +362,8 @@ class Gui:
         """
         global img_pixel_size_x, img_pixel_size_y, mrc_pixel_size_x, mrc_pixel_size_y
 
-        ### invert y-axis to match GIF image coordinate conventions ## 2021-09-10: WRONG implementation, do not invert here!
+        ### invert y-axis to match GIF image coordinate conventions
+        ## 2021-09-10: WRONG implementation, RELION v.3.1 no longer inverts y-axis on .STAR data?
         # inverted_star_coord = ( star_coord[0], mrc_pixel_size_y - star_coord[1] )
         inverted_star_coord = ( star_coord[0], star_coord[1] )
 
