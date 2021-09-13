@@ -56,6 +56,11 @@ class Gui:
         # dropdown_file.add_command(label="Convert .box to _manualpick.star", command=self.write_manpick_files)
         dropdown_file.add_command(label="Exit", command=self.quit)
 
+        dropdown_functions = Menu(menubar)
+        menubar.add_cascade(label="Functions", menu=dropdown_functions)
+        dropdown_functions.add_command(label="Auto-contrast", command=self.auto_contrast)
+
+
         ## Widgets
         self.canvas = Canvas(master, width = 650, height = 600, background="gray", cursor="cross red red")
         # self.current_dir = Label(master, font=("Helvetica", 12), text="")
@@ -1204,6 +1209,21 @@ class Gui:
             return column_value
         except:
             return False
+
+    def auto_contrast(self):
+        """
+        """
+        global image_coordinates
+
+        minval = np.percentile(im_array, 2)
+        maxval = np.percentile(im_array, 98)
+        im_array = np.clip(im_array, minval, maxval)
+        im_array = ((im_array - minval) / (maxval - minval)) * 255
+        return im_array
+
+    def gaussian_blur(im_array, sigma):
+        blurred_img = ndimage.gaussian_filter(im_array, sigma)
+        return blurred_img
 
 
 ##########################
