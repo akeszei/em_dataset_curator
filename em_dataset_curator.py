@@ -59,6 +59,7 @@ class Gui:
         dropdown_functions = Menu(menubar)
         menubar.add_cascade(label="Functions", menu=dropdown_functions)
         dropdown_functions.add_command(label="Auto-contrast", command=self.auto_contrast)
+        dropdown_functions.add_command(label="Contrast from selection", command=self.contrast_by_selected_particles)
 
 
         ## Widgets
@@ -756,7 +757,8 @@ class Gui:
 
     def on_middle_mouse_release(self, event):
         global n
-        self.load_img(n)
+        self.draw_image_coordinates()
+        # self.load_img(n)
         return
 
     def save_starfile(self):
@@ -817,7 +819,9 @@ class Gui:
             y_coord = mouse_position[1]
             image_coordinates[(x_coord, y_coord)] = 'new_point'
         ## redraw data on screen
-        self.load_img(n)
+        # self.load_img(n)
+        self.draw_image_coordinates()
+        return
 
     def is_clashing(self, mouse_position):
         """ mouse_position = tuple of form (x, y)
@@ -1248,6 +1252,45 @@ class Gui:
 
         ## load the modified img onto the canvas
         self.load_img(n, im)
+        return
+
+    def contrast_by_selected_particles(self):
+        """
+        """
+        global image_coordinates, script_path, file_dir, image_list, n, mrc_pixel_size_x, img_pixel_size_x, angpix, box_size
+        try:
+            sys.path.append(script_path)
+            import image_handler #as image_handler
+        except :
+            print("Abort auto_contrast :: Check if image_handler.py script is in same folder as this script and runs without error (i.e. can be compiled)!")
+            return
+
+        ## box_size is a value given in Angstroms, we need to convert it to pixels
+        scale_factor = mrc_pixel_size_x / img_pixel_size_x
+        angpix_gif = angpix * scale_factor
+        gif_box_width = int(box_size / angpix_gif) ## this is the pixel size of the gif image, we can use this to calculate the size of the box to draw
+
+        ## get the current image name with full path
+        image_w_path = file_dir + "/" + image_list[n]
+
+        ## use Pillow to open the image as a grayscale
+        PIL_image = Image.open(image_w_path).convert("L")
+        ## convert the image data to a numpy array for processing
+        im = np.array(PIL_image)
+        print(type(im), im.shape, "pixels", ", intensity (min, max) = ", np.min(im), np.max(im))
+
+        ## extract the particle images from the centered coordinates
+        extracted_imgs = image_handler.extract_boxes(im, gif_box_width, image_coordinates, DEBUG = True)
+        min, max = image_handler.find_intensity_range(extracted_imgs)
+        ## whiten outliers so we can apply new contrast to it
+        im = image_handler.whiten_outliers(im, min, max)
+
+        ## use the image processing functions to modify the desired img
+        im = image_handler.sigma_contrast(im, 1)
+
+        ## load the modified img onto the canvas
+        self.load_img(n, im)
+
         return
 
     def gaussian_blur(im_array, sigma):

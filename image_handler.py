@@ -70,6 +70,9 @@ def extract_boxes(im_array, box_size, coords, DEBUG = True):
         extracted_img = im_array[y0:y1,x0:x1]
         extracted_imgs.append(extracted_img)
 
+    if DEBUG:
+        print(" Extracted %s boxes from image" % len(extracted_imgs))
+
     return extracted_imgs
 
 def find_intensity_range(im_arrays, DEBUG = True):
