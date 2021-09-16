@@ -60,7 +60,7 @@ class Gui:
         menubar.add_cascade(label="Functions", menu=dropdown_functions)
         dropdown_functions.add_command(label="Auto-contrast", command=self.auto_contrast)
         dropdown_functions.add_command(label="Contrast from selection", command=self.contrast_by_selected_particles)
-
+        dropdown_functions.add_command(label="Blur", command=self.gaussian_blur)
 
         ## Widgets
         self.canvas = Canvas(master, width = 650, height = 600, background="gray", cursor="cross red red")
@@ -964,7 +964,7 @@ class Gui:
         RETURNS
             Void
         """
-        global n, image_list, marked_imgs, img_pixel_size_x, img_pixel_size_y, IMAGE_LOADED, image_coordinates
+        global n, image_list, marked_imgs, img_pixel_size_x, img_pixel_size_y, IMAGE_LOADED, image_coordinates, current_im_data
 
         ## force a refresh on all canvas objects based on changing global variables
         self.canvas.delete('marker')
@@ -979,12 +979,14 @@ class Gui:
         ## check if an eplicit image was passed in, otherwise load the image as usual
         if input_img is None:
             # load image onto canvas object using PhotoImage
-            PIL_image = Image.open(image_w_path)
+            PIL_image = Image.open(image_w_path).convert('L')
             self.current_img = ImageTk.PhotoImage(PIL_image)
+            current_im_data = np.asarray(PIL_image)
         else:
             ## load the supplied image
-            PIL_image = Image.fromarray(input_img)
+            PIL_image = Image.fromarray(input_img) #.convert('L')
             self.current_img = ImageTk.PhotoImage(PIL_image)
+            current_im_data = input_img
 
 
         # self.current_img = PhotoImage(file=image_w_path)
@@ -1230,7 +1232,7 @@ class Gui:
     def auto_contrast(self):
         """
         """
-        global image_coordinates, script_path, file_dir, image_list, n
+        global image_coordinates, script_path, file_dir, image_list, n, current_im_data
         try:
             sys.path.append(script_path)
             import image_handler #as image_handler
@@ -1238,26 +1240,28 @@ class Gui:
             print("Abort auto_contrast :: Check if image_handler.py script is in same folder as this script and runs without error (i.e. can be compiled)!")
             return
 
-        ## get the current image name with full path
-        image_w_path = file_dir + "/" + image_list[n]
+        # ## get the current image name with full path
+        # image_w_path = file_dir + "/" + image_list[n]
+        #
+        # ## use Pillow to open the image as a grayscale
+        # PIL_image = Image.open(image_w_path).convert("L")
+        # ## convert the image data to a numpy array for processing
+        # im = np.array(PIL_image)
+        # print(type(im), im.shape, "pixels", ", intensity (min, max) = ", np.min(im), np.max(im))
 
-        ## use Pillow to open the image as a grayscale
-        PIL_image = Image.open(image_w_path).convert("L")
-        ## convert the image data to a numpy array for processing
-        im = np.array(PIL_image)
-        print(type(im), im.shape, "pixels", ", intensity (min, max) = ", np.min(im), np.max(im))
-
+        im = current_im_data
         ## use the image processing functions to modify the desired img
         im = image_handler.auto_contrast(im)
 
         ## load the modified img onto the canvas
+        current_im_data = im
         self.load_img(n, im)
         return
 
     def contrast_by_selected_particles(self):
         """
         """
-        global image_coordinates, script_path, file_dir, image_list, n, mrc_pixel_size_x, img_pixel_size_x, angpix, box_size
+        global image_coordinates, script_path, file_dir, image_list, n, mrc_pixel_size_x, img_pixel_size_x, angpix, box_size, current_im_data
         try:
             sys.path.append(script_path)
             import image_handler #as image_handler
@@ -1270,15 +1274,15 @@ class Gui:
         angpix_gif = angpix * scale_factor
         gif_box_width = int(box_size / angpix_gif) ## this is the pixel size of the gif image, we can use this to calculate the size of the box to draw
 
-        ## get the current image name with full path
-        image_w_path = file_dir + "/" + image_list[n]
-
-        ## use Pillow to open the image as a grayscale
-        PIL_image = Image.open(image_w_path).convert("L")
-        ## convert the image data to a numpy array for processing
-        im = np.array(PIL_image)
-        print(type(im), im.shape, "pixels", ", intensity (min, max) = ", np.min(im), np.max(im))
-
+        # ## get the current image name with full path
+        # image_w_path = file_dir + "/" + image_list[n]
+        #
+        # ## use Pillow to open the image as a grayscale
+        # PIL_image = Image.open(image_w_path).convert("L")
+        # ## convert the image data to a numpy array for processing
+        # im = np.array(PIL_image)
+        # print(type(im), im.shape, "pixels", ", intensity (min, max) = ", np.min(im), np.max(im))
+        im = current_im_data
         ## extract the particle images from the centered coordinates
         extracted_imgs = image_handler.extract_boxes(im, gif_box_width, image_coordinates, DEBUG = True)
         min, max = image_handler.find_intensity_range(extracted_imgs)
@@ -1286,16 +1290,28 @@ class Gui:
         im = image_handler.whiten_outliers(im, min, max)
 
         ## use the image processing functions to modify the desired img
-        im = image_handler.sigma_contrast(im, 1)
+        im = image_handler.sigma_contrast(im, 1) ## let the user adjust the sigma value?
+        # im = image_handler.gaussian_blur(im, 1.5)
 
         ## load the modified img onto the canvas
+        current_im_data = im
         self.load_img(n, im)
 
         return
 
-    def gaussian_blur(im_array, sigma):
-        blurred_img = ndimage.gaussian_filter(im_array, sigma)
-        return blurred_img
+    def gaussian_blur(self):
+        global n, current_im_data
+        try:
+            sys.path.append(script_path)
+            import image_handler #as image_handler
+        except :
+            print("Abort auto_contrast :: Check if image_handler.py script is in same folder as this script and runs without error (i.e. can be compiled)!")
+            return
+        im = current_im_data
+        im = image_handler.gaussian_blur(im, 1.5)
+        current_im_data = im
+        self.load_img(n, im)
+        return
 
 
 ##########################
@@ -1311,7 +1327,8 @@ if __name__ == '__main__':
     n=0
     img_on_save = ''
 
-    IMAGE_LOADED = False; # Flag to check if an image is loaded (to avoid throwing errors)
+    IMAGE_LOADED = False # Flag to check if an image is loaded (to avoid throwing errors)
+    current_im_data = None ## np array of grayscale image current being displayed
 
     RIGHT_MOUSE_PRESSED = False # Flag to implement right-mouse activated brush icon
 
