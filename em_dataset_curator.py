@@ -952,8 +952,13 @@ class Gui:
         self.load_img(n)
         return
 
-    def load_img(self, index):
+    def load_img(self, index, input_img = None):
         """ Load image with specified index
+        PARAMETERS
+            index = int(); tied to global 'n' variable, indicating which image to load from the list found in the directory
+            input_img = np.array; optional grayscale image (0 - 255) to load instead of using the index
+        RETURNS
+            Void
         """
         global n, image_list, marked_imgs, img_pixel_size_x, img_pixel_size_y, IMAGE_LOADED, image_coordinates
 
@@ -967,9 +972,17 @@ class Gui:
         self.input_text.delete(0,END)
         self.input_text.insert(0,image_list[n])
 
-        # load image onto canvas object using PhotoImage
-        PIL_image = Image.open(image_w_path)
-        self.current_img = ImageTk.PhotoImage(PIL_image)
+        ## check if an eplicit image was passed in, otherwise load the image as usual
+        if input_img is None:
+            # load image onto canvas object using PhotoImage
+            PIL_image = Image.open(image_w_path)
+            self.current_img = ImageTk.PhotoImage(PIL_image)
+        else:
+            ## load the supplied image
+            PIL_image = Image.fromarray(input_img)
+            self.current_img = ImageTk.PhotoImage(PIL_image)
+
+
         # self.current_img = PhotoImage(file=image_w_path)
         self.display = self.canvas.create_image(0, 0, anchor=NW, image=self.current_img)
         self.canvas.display = self.display
@@ -1213,13 +1226,29 @@ class Gui:
     def auto_contrast(self):
         """
         """
-        global image_coordinates
+        global image_coordinates, script_path, file_dir, image_list, n
+        try:
+            sys.path.append(script_path)
+            import image_handler #as image_handler
+        except :
+            print("Abort auto_contrast :: Check if image_handler.py script is in same folder as this script and runs without error (i.e. can be compiled)!")
+            return
 
-        minval = np.percentile(im_array, 2)
-        maxval = np.percentile(im_array, 98)
-        im_array = np.clip(im_array, minval, maxval)
-        im_array = ((im_array - minval) / (maxval - minval)) * 255
-        return im_array
+        ## get the current image name with full path
+        image_w_path = file_dir + "/" + image_list[n]
+
+        ## use Pillow to open the image as a grayscale
+        PIL_image = Image.open(image_w_path).convert("L")
+        ## convert the image data to a numpy array for processing
+        im = np.array(PIL_image)
+        print(type(im), im.shape, "pixels", ", intensity (min, max) = ", np.min(im), np.max(im))
+
+        ## use the image processing functions to modify the desired img
+        im = image_handler.auto_contrast(im)
+
+        ## load the modified img onto the canvas
+        self.load_img(n, im)
+        return
 
     def gaussian_blur(im_array, sigma):
         blurred_img = ndimage.gaussian_filter(im_array, sigma)
@@ -1230,6 +1259,7 @@ class Gui:
 ### RUN BLOCK
 ##########################
 if __name__ == '__main__':
+    import numpy as np
 
     ## Get the execution path of this script so we can find modules in its root folder, if necessary
     script_path = os.path.dirname(os.path.abspath(sys.argv[0]))

@@ -22,14 +22,16 @@ def sigma_contrast(im_array, sigma):
         standard deviations to keep). Can perform better than auto_contrast when there is
         a lot of dark pixels throwing off the level balancing.
     """
-    ## WIP
-    # ## avoid hotspot pixels by looking at a group of pixels at the extreme ends of the image
-    # minval = np.percentile(im_array, 2)
-    # maxval = np.percentile(im_array, 98)
-    # ## remove pixles above/below the defined limits
-    # im_array = np.clip(im_array, minval, maxval)
-    # ## rescale the image into the range 0 - 255
-    # im_array = ((im_array - minval) / (maxval - minval)) * 255
+    import numpy as np
+    stdev = np.std(im_array)
+    mean = np.mean(im_array)
+    print("Image intensity data (mean, stdev) = (%s, %s)" % (mean, stdev))
+    minval = mean - (stdev * sigma)
+    maxval = mean + (stdev * sigma)
+    ## remove pixles above/below the defined limits
+    im_array = np.clip(im_array, minval, maxval)
+    ## rescale the image into the range 0 - 255
+    im_array = ((im_array - minval) / (maxval - minval)) * 255
 
     return im_array
 
@@ -149,35 +151,57 @@ def display_img(im_array, coords = None, box_size = 1):
 
     root.mainloop()
 
+def gaussian_disk(size):
+    """ Creates a soft gaussian grayscale image of given pixel size with values in range 0 -- 255
+    """
+    import numpy as np
 
-### FROM previous code, these two functions seem to work well getting an image with particles centered ... fails during labeling with scipy though... 
-# def gaussian_disc(size):
-#     """ Creates a soft gaussian grayscale image of given pixel size
-#     """
-#     size = int(size)
-#     x, y = np.meshgrid(np.linspace(-1,1, size), np.linspace(-1,1, size))
-#     d = np.sqrt(x*x+y*y)
-#     sigma, mu = 0.4, 0.0
-#     g = np.exp(-( (d-mu)**2 / ( 2.0 * sigma**2 ) ) )
-#     ## invert color to we match to dark pixels
-#     g = 1 - g
-#
-#     g = g * 255
-#     return g
-#
-# def template_cross_correlate(im_array, template):
-#     if DEBUG:
-#         print("Template info: %s, min = %s, max %s" % (template.shape, np.min(template), np.max(template)))
-#     cc = signal.correlate2d(im_array, template, boundary='symm', mode='same')
-#     cc = auto_contrast(cc)
-#     print(np.min(cc), np.max(cc))
-#     return cc
+    size = int(size)
+    x, y = np.meshgrid(np.linspace(-1,1, size), np.linspace(-1,1, size))
+    d = np.sqrt(x*x+y*y)
+    sigma, mu = 0.4, 0.0
+    g = np.exp(-( (d-mu)**2 / ( 2.0 * sigma**2 ) ) )
+    ## invert color to we match to dark pixels
+    g = 1 - g
+
+    g = g * 255
+    return g
+
+def template_cross_correlate(im_array, template, threshold, DEBUG = False):
+    """
+    PARAMETERS
+        im_array = np array of grayscale img in range 0 - 255
+        template = np array of grayscale template img in range 0 - 255
+        threshold = int(); peak cutoff in range 0 - 1
+    RETURNS
+        cc = cross correlation image as a grayscale (0 - 255), note peaks represent positions aligned with top-right of template!
+    """
+    import numpy as np
+    from scipy import signal
+
+    if DEBUG:
+        print("Template info: %s, min = %s, max %s" % (template.shape, np.min(template), np.max(template)))
+    cc = signal.correlate2d(im_array, template, boundary='symm', mode='same')
+    ## determine the threshold at which to keep peaks
+    cc_min, cc_max = (np.min(cc), np.max(cc))
+    cc_range = cc_max - cc_min
+    cc_threshold_cutoff = cc_min + (threshold * cc_range)
+    print("cc min, max, range, threshold value = (%s, %s, %s, %s)" % ( np.min(cc), np.max(cc), cc_range, cc_threshold_cutoff))
+    ## remove signal below peaks
+    cc = np.where(cc < cc_threshold_cutoff, 0, 255)
+    return cc
+
 
 # template = gaussian_disc(scaled_box_size)
 # template -= template.mean() ## NOTE: maybe have the template scaled not by mean() but by the expected max signal of the picked particles so far?
 #
 # cc_data = template_cross_correlate(im_data, template)
 
+
+def bool_img(im_array, threshold):
+    import numpy as np
+    im_array = np.where(im_array < threshold, 255, 0)
+    return im_array
 
 
 #############################################
@@ -201,12 +225,22 @@ if __name__ == "__main__":
     extracted_imgs = extract_boxes(im, box_size, coords, DEBUG = True)
     min, max = find_intensity_range(extracted_imgs)
 
-    im = whiten_outliers(im, min, max)
-
+    ## try to limit effect of noise by applying a soft blur to the img
     im = gaussian_blur(im, 1.5)
 
-    im = auto_contrast(im)
+    im = whiten_outliers(im, min, max)
 
+    ## TRY: instead of whitening outliers, take in a set of particle coordinates, determine their contrast (avgmin, avgmax), and choose a threshold midway between them to apply a boolean mask that could then be used for labeling...see how it works
+    cutoff = min + 20 #int(max - min / 1000000) + min
+    im = bool_img(im, cutoff)
+
+    # im = auto_contrast(im)
+    # im = sigma_contrast(im, 2)
+    ## try adding a highpass filter (upwards of 500 ang?)
+
+
+    # template = gaussian_disk(17)
+    # threshold = 0.7
+    # cc = template_cross_correlate(im, template, threshold, DEBUG = True)
 
     display_img(im)
-    # display_bool_img(im)
