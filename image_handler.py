@@ -2,6 +2,15 @@
     Common processing functions for grayscale images: (x, y), where x,y in range (0,255)
 """
 
+def local_contrast(im_array, box_size):
+    """ REF: https://scikit-image.org/docs/dev/auto_examples/color_exposure/plot_local_equalize.html
+    """
+    from skimage.filters import rank
+    from skimage.morphology import disk
+    footprint = disk(box_size * 2)
+    im = rank.equalize(im_array, footprint)
+    return im
+
 def auto_contrast(im_array):
     """ Rescale the image intensity levels to a reasonable range using the top/bottom 2 percent
         of the data to define the intensity levels
@@ -138,11 +147,13 @@ def display_img(im_array, coords = None, box_size = 1):
     root = Tk()
     canvas = Canvas(root, width = im_array.shape[0], height = im_array.shape[1])
     canvas.pack()
-    img = PIL_Image.fromarray(im_array)
+    img = PIL_Image.fromarray(im_array).convert('L')
     img = ImageTk.PhotoImage(img)
     canvas.create_image(0, 0, anchor=NW, image=img)
 
-    if coords != None:
+    if coords is None:
+        pass
+    else:
         for coordinate in coords:
             # break
             ## each coordinate is the center of a box, thus we need to offset by half the gif_box_width pixel length to get the bottom left and top right of the rectangle
@@ -194,17 +205,43 @@ def template_cross_correlate(im_array, template, threshold, DEBUG = False):
     cc = np.where(cc < cc_threshold_cutoff, 0, 255)
     return cc
 
-
-# template = gaussian_disc(scaled_box_size)
-# template -= template.mean() ## NOTE: maybe have the template scaled not by mean() but by the expected max signal of the picked particles so far?
-#
-# cc_data = template_cross_correlate(im_data, template)
-
-
 def bool_img(im_array, threshold):
+    """
+        For a given threshold value (intensity, i.e. between 0 - 255), make any pixels below the
+        threshold equal to 255 (white) and any above 0 (black)
+    PARAMETERS
+        im_array = np array of a grayscale image (0 - 255)
+    RETURNS
+        im_array = np array as grayscale image (0 - 255)
+    """
     import numpy as np
-    im_array = np.where(im_array < threshold, 255, 0)
+
+    im_array = np.where(im_array >= threshold, 255, 0)
     return im_array
+
+def find_local_maxima(im_array, box_size, DEBUG = False):
+    """
+    """
+    from skimage.measure import label, regionprops
+
+    labeled_img = label(im_array, connectivity = 2)
+    regions = regionprops(labeled_img)
+    coordinates = []
+
+    min_area = 4 ## minimum # of pixels for a labeled feature to be added as a coordinate
+    max_area = box_size
+    for props in regions:
+        area = getattr(props, 'area')
+        if area >= min_area:
+            if area <= max_area:
+                y0, x0 = props.centroid
+                coordinates.append((x0, y0))
+
+    if DEBUG:
+        # print(" Find local maxima peaks using search window size of: %s" % search_window)
+        print("%s coordinates found!" % len(coordinates))
+
+    return coordinates
 
 
 #############################################
@@ -225,25 +262,24 @@ if __name__ == "__main__":
     ## box_size and some coordinates for img B1g1...Exp_10.jpg
     coords = [(444,138), (452, 124), (466, 117)]
     box_size = 17
-    extracted_imgs = extract_boxes(im, box_size, coords, DEBUG = True)
-    min, max = find_intensity_range(extracted_imgs)
 
-    ## try to limit effect of noise by applying a soft blur to the img
-    im = gaussian_blur(im, 1.5)
 
-    im = whiten_outliers(im, min, max)
-
-    ## TRY: instead of whitening outliers, take in a set of particle coordinates, determine their contrast (avgmin, avgmax), and choose a threshold midway between them to apply a boolean mask that could then be used for labeling...see how it works
-    cutoff = min + 20 #int(max - min / 1000000) + min
-    im = bool_img(im, cutoff)
-
+    im = local_contrast(im, box_size)
+    # im = sigma_contrast(im, 1.5)
     # im = auto_contrast(im)
-    # im = sigma_contrast(im, 2)
-    ## try adding a highpass filter (upwards of 500 ang?)
+
+    im = gaussian_blur(im, 1)
+
+    # extracted_imgs = extract_boxes(im, box_size, coords, DEBUG = True)
+    # min, max = find_intensity_range(extracted_imgs)
+    # im = whiten_outliers(im, min, max)
+
+    ## boolean image
+    # cutoff = 100 #int(max - min / 1000000) + min
+    # im = bool_img(im, cutoff)
 
 
-    # template = gaussian_disk(17)
-    # threshold = 0.7
-    # cc = template_cross_correlate(im, template, threshold, DEBUG = True)
+    # im_inverted = 255 - im ## local maxima uses 0 as background so we need particle peaks to be white
+    # coords = find_local_maxima(im_inverted, box_size, DEBUG = True)
 
-    display_img(im)
+    display_img(im, coords, box_size)
