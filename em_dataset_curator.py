@@ -26,13 +26,6 @@
 ### FUNCTION DEFINITIONS
 ##########################
 
-from tkinter import *
-from tkinter.filedialog import askopenfilename
-from tkinter.messagebox import showerror
-import os, string, sys
-from PIL import Image, ImageTk
-
-from tkinter import ttk
 
 class Gui:
     def __init__(self, master):
@@ -42,7 +35,9 @@ class Gui:
         self.master = master
         master.title("EM dataset curator")
 
+        ####################################
         ## Menu bar layout
+        ####################################
         ## initialize the top menu bar
         menubar = Menu(self.master)
         self.master.config(menu=menubar)
@@ -53,16 +48,23 @@ class Gui:
         dropdown_file.add_command(label="Load marked filelist", command=self.load_marked_filelist)
         # dropdown_file.add_command(label="Import .box coordinates", command=self.load_boxfile_coords)
         dropdown_file.add_command(label="Print marked imgs (Ctrl+S)", command=self.write_marked)
-        # dropdown_file.add_command(label="Convert .box to _manualpick.star", command=self.write_manpick_files)
         dropdown_file.add_command(label="Exit", command=self.quit)
 
         dropdown_functions = Menu(menubar)
         menubar.add_cascade(label="Functions", menu=dropdown_functions)
-        dropdown_functions.add_command(label="Auto-contrast", command=self.auto_contrast)
-        dropdown_functions.add_command(label="Contrast from selection", command=self.contrast_by_selected_particles)
+        dropdown_functions.add_command(label="Local contrast", command=self.local_contrast)
         dropdown_functions.add_command(label="Blur", command=self.gaussian_blur)
+        dropdown_functions.add_command(label="Auto-contrast", command=self.auto_contrast)
+        dropdown_functions.add_command(label="Make bool img", command=self.bool_img)
+        dropdown_functions.add_command(label="Contrast from selection", command=self.contrast_by_selected_particles)
+        dropdown_functions.add_command(label="Reset img", command=self.load_img)
+        dropdown_functions.add_command(label="Clear coordinates", command=self.clear_coordinates)
+        dropdown_functions.add_command(label="Default autopicker", command=self.default_autopick)
+        ####################################
 
-        ## Widgets
+        ####################################
+        ## Widget setup/functions
+        ####################################
         self.canvas = Canvas(master, width = 650, height = 600, background="gray", cursor="cross red red")
         # self.current_dir = Label(master, font=("Helvetica", 12), text="")
         self.input_text = Entry(master, width=30, font=("Helvetica", 16), highlightcolor="blue", borderwidth=None, relief=FLAT, foreground="black", background="light gray")
@@ -77,70 +79,36 @@ class Gui:
         self.angpix_label = Label(master, font=("Helvetica", 12), text=".MRC Ang/pix")
         self.input_angpix = Entry(master, width=18, font=("Helvetica", 12))
         self.input_angpix.insert(END, "%s" % angpix)
-        # self.box_size_ang_label = Label(master, font=("Helvetica", 11), text="Box size:")
-        # self.box_size_ang = Label(master, font=("Helvetica italic", 10), text="%s Angstroms" % (box_size * angpix))
-        self.img_size_label = Label(master, font=("Helvetica", 11), text="img dimensions (x,y) px:")
-        self.img_size = Label(master, font=("Helvetica italic", 10), text="%s, %s" % (img_pixel_size_x, img_pixel_size_y))
         self.autopick_button = Button(master, text="Autopick", command=self.autopick, width=10)
         self.NEGATIVE_STAIN = BooleanVar(master, False)
         self.negative_stain_toggle = Checkbutton(master, text='Negative stain', variable=self.NEGATIVE_STAIN, onvalue=True, offvalue=False, command=self.toggle_negative_stain)
-        self.input_autopick_min_distance = Entry(master, width=18, font=("Helvetica", 12))
-        self.input_autopick_min_distance.insert(END, "%s" % autopick_min_distance)
-        self.autopick_min_distance_label = Label(master, font=("Helvetica, 12"), text="Min. distance (Ang)")
-        self.input_autopick_threshold = Entry(master, width=18, font=("Helvetica", 12))
-        self.input_autopick_threshold.insert(END, "%s" % autopick_threshold)
-        self.autopick_threshold_label = Label(master, font=("Helvetica, 12"), text="Threshold")
-        self.input_autopick_blur = Entry(master, width=18, font=("Helvetica", 12))
-        self.input_autopick_blur.insert(END, "%s" % autopick_blur)
-        self.autopick_blur_label = Label(master, font=("Helvetica, 12"), text="Blurring factor")
-        self.REFINE_METHOD = StringVar(master, "None")
-        self.autopick_refine_method_label = Label(master, font=("Helvetica, 12"), text="Refinement method")
-        self.input_autopick_refine_method = OptionMenu(master, self.REFINE_METHOD, "None", "Thresholding", "Contouring")
-        self.SHOW_REFINEMENT_IMGS = BooleanVar(master, False)
-        self.show_refinement_imgs_toggle = Checkbutton(master, text='Test refinement settings', variable=self.SHOW_REFINEMENT_IMGS, onvalue=True, offvalue=False)
-        self.input_refinement_threshold = Entry(master, width=18, font=("Helvetica", 12))
-        self.input_refinement_threshold.insert(END, "%s" % autopick_refine_threshold)
-        self.refinement_threshold_label = Label(master, font=("Helvetica, 12"), text="Refinement threshold")
         self.separator = ttk.Separator(master, orient='horizontal')
         self.autopick_header = Label(master, font=("Helvetica, 16"), text="Autopicking")
+        ####################################
 
+        ####################################
         ## Widget layout
+        ####################################
         self.input_text.grid(row=0, column=0, sticky=NW, padx=5, pady=5)
         self.canvas.grid(row=1, column=0, rowspan=100) #rowspan=0)
-        # self.current_dir.grid(row=1, column=0, sticky=W, padx=5)
 
         self.settings_header.grid(row=1, column = 1, sticky = W)
-        self.img_size_label.grid(row=2, column=1, padx=5, pady=0, sticky=S)
-        self.img_size.grid(row=3, column=1, padx=5, pady=0, sticky=N)
         self.mrc_dimensions_label.grid(row=4, column=1, padx=5, sticky=(S, W))
         self.input_mrc_dimensions.grid(row=5, column=1, padx=5, pady=0, sticky=(N, W))
         self.mrc_box_size_label.grid(row=6, column=1, padx=5, pady=0, sticky=(S, W))
         self.input_mrc_box_size.grid(row=7, column=1, padx=5, pady=0, sticky=(N, W))
         self.angpix_label.grid(row=9, column=1, padx=5, pady=0, sticky=(S, W))
         self.input_angpix.grid(row=10, column=1, padx=5, pady=0, sticky=(N, W))
-        # self.box_size_ang_label.grid(row=13, column=1, padx=5, pady=0, sticky=S)
-        # self.box_size_ang.grid(row=14, column=1, padx=5, pady=0, sticky=N)
-        # self.browse.grid(row=100, column=1, sticky=(S, E))
 
         self.separator.grid(row=20, column =1, sticky=EW)
         self.autopick_header.grid(row=21, column = 1, sticky = W)
         self.negative_stain_toggle.grid(row=22, column=1, padx=5, pady=0, sticky=N)
-        self.autopick_min_distance_label.grid(row=23, column=1, padx=5, sticky=(S, W))
-        self.input_autopick_min_distance.grid(row=24, column=1, padx=5, pady=0, sticky=(N, W))
-        self.autopick_threshold_label.grid(row=25, column=1, padx=5, sticky=(S, W))
-        self.input_autopick_threshold.grid(row=26, column=1, padx=5, pady=0, sticky=(N, W))
-        self.autopick_blur_label.grid(row=27, column=1, padx=5, sticky=(S, W))
-        self.input_autopick_blur.grid(row=28, column=1, padx=5, pady=0, sticky=(N, W))
-        self.autopick_refine_method_label.grid(row=29, column=1, padx=5, pady=0, sticky=(N, W))
-        self.input_autopick_refine_method.grid(row=30, column=1, padx =5, pady=0, sticky=N)
-        self.refinement_threshold_label.grid(row=31, column=1, padx=5, sticky=(S, W))
-        self.input_refinement_threshold.grid(row=32, column=1, padx=5, pady=0, sticky=(N, W))
-        self.show_refinement_imgs_toggle.grid(row=33, column=1, padx=5, pady=0, sticky=N)
-        self.autopick_button.grid(row=34, column=1, padx =5, pady=0, sticky=N)
+        self.autopick_button.grid(row=25, column=1, padx =5, pady=0, sticky=N)
+        ####################################
 
-
-
-        ## Key bindings
+        ####################################
+        ## Keybindings
+        ####################################
         self.canvas.bind('<Left>', lambda event: self.next_img('left'))
         self.canvas.bind('<Right>', lambda event: self.next_img('right'))
         self.canvas.bind('<z>', lambda event: self.next_img('left'))
@@ -157,147 +125,24 @@ class Gui:
         self.input_angpix.bind('<KP_Enter>', lambda event: self.new_angpix()) # numpad 'Return' key
         self.input_angpix.bind('<Return>', lambda event: self.new_angpix())
         self.input_mrc_box_size.bind('<KP_Enter>', lambda event: self.new_box_size()) # numpad 'Return' key
-        self.input_autopick_min_distance.bind('<Return>', lambda event: self.refresh_autopick_variables())
-        self.input_autopick_min_distance.bind('<KP_Enter>', lambda event: self.refresh_autopick_variables()) # numpad 'Return' key
-        self.input_autopick_threshold.bind('<Return>', lambda event: self.refresh_autopick_variables())
-        self.input_autopick_threshold.bind('<KP_Enter>', lambda event: self.refresh_autopick_variables()) # numpad 'Return' key
-        self.input_autopick_blur.bind('<Return>', lambda event: self.refresh_autopick_variables())
-        self.input_autopick_blur.bind('<KP_Enter>', lambda event: self.refresh_autopick_variables()) # numpad 'Return' key
-        self.input_refinement_threshold.bind('<Return>', lambda event: self.refresh_autopick_variables())
-        self.input_refinement_threshold.bind('<KP_Enter>', lambda event: self.refresh_autopick_variables()) # numpad 'Return' key
+
         self.canvas.bind('<Control-KeyRelease-s>', lambda event: self.write_marked())
         self.canvas.bind("<ButtonPress-1>", self.on_left_mouse_down)
         self.canvas.bind("<ButtonPress-2>", self.on_middle_mouse_press)
         self.canvas.bind("<ButtonRelease-2>", self.on_middle_mouse_release)
-
         self.canvas.bind("<ButtonPress-3>", self.on_right_mouse_press)
         self.canvas.bind("<ButtonRelease-3>", self.on_right_mouse_release)
         self.canvas.bind("<Motion>", self.delete_brush_cursor)
-
         self.canvas.bind("<MouseWheel>", self.MouseWheelHandler) # Windows, Mac: Binding to <MouseWheel> is being used
         self.canvas.bind("<Button-4>", self.MouseWheelHandler) # Linux: Binding to <Button-4> and <Button-5> is being used
         self.canvas.bind("<Button-5>", self.MouseWheelHandler)
+        ####################################
 
         self.master.protocol("WM_DELETE_WINDOW", self.quit)
-
         ## Run function to check for settings files and, if present load them into variables
         self.load_settings()
-
         ## Set focus to canvas, which has arrow key bindings
         self.canvas.focus_set()
-
-    def refresh_autopick_variables(self):
-        """ Update the global variables from user input in the main window
-        """
-        import re ## for use of re.findall() function to extract numbers from strings
-        global autopick_min_distance, autopick_threshold, autopick_blur, autopick_refine_threshold
-
-        user_input_min_distance = self.input_autopick_min_distance.get().strip()
-        temp = re.findall(r'\d+', user_input_min_distance)
-        res = list(map(int, temp))
-
-        ## kill function if invalid entry is given
-        if not len(res) == 1 or not isinstance(res[0], int) or not res[0] > 0:
-            self.input_autopick_min_distance.delete(0,END)
-            self.input_autopick_min_distance.insert(0, "min dist (ang)")
-            return
-        ## set the global box_size to the input field value
-        autopick_min_distance = res[0]
-
-        try:
-            user_input_threshold = float(self.input_autopick_threshold.get().strip())
-        except:
-            self.input_autopick_threshold.delete(0,END)
-            self.input_autopick_threshold.insert(0, "must be a float")
-            return
-        if 0 <= user_input_threshold <= 1:
-            ## the value is in the correct range, so set the global to the input value
-            autopick_threshold = user_input_threshold
-        else:
-            self.input_autopick_threshold.delete(0,END)
-            self.input_autopick_threshold.insert(0, "must be in [0,1]")
-            return
-
-        try:
-            user_input_blur = float(self.input_autopick_blur.get().strip())
-        except:
-            self.input_autopick_blur.delete(0,END)
-            self.input_autopick_blur.insert(0, "must be a float")
-            return
-        if 0 <= user_input_blur:
-            ## the value is in the correct range, so set the global to the input value
-            autopick_blur = user_input_blur
-        else:
-            self.input_autopick_blur.delete(0,END)
-            self.input_autopick_blur.insert(0, "must be in [0,inf]")
-            return
-
-        try:
-            user_input_refine_threshold = float(self.input_refinement_threshold.get().strip())
-        except:
-            self.input_refinement_threshold.delete(0,END)
-            self.input_refinement_threshold.insert(0, "must be a float")
-            return
-        if 0 <= user_input_refine_threshold < 1:
-            ## the value is in the correct range, so set the global to the input value
-            autopick_refine_threshold = user_input_refine_threshold
-        else:
-            self.input_refinement_threshold.delete(0,END)
-            self.input_refinement_threshold.insert(0, "try in range [0,1)")
-            return
-
-
-        print("Updated autopick global variables :: autopick_min_distance = %s, autopick_threshold = %s, autopick_blur = %s, autopick_refine_threshold = %s" % (autopick_min_distance, autopick_threshold, autopick_blur, autopick_refine_threshold))
-
-        ## revert focus to main canvas
-        self.canvas.focus_set()
-        return
-
-    def toggle_negative_stain(self):
-        if self.NEGATIVE_STAIN.get() == True:
-            print("Negative stain mode is ON")
-        else:
-            print("Negative stain mode if OFF")
-        return
-
-    def autopick(self):
-        global image_list, n, script_path, image_coordinates, angpix, autopick_min_distance, autopick_threshold, autopick_blur, autopick_refinement_method, autopick_refine_threshold
-
-        try:
-            sys.path.append(script_path)
-            import peak_finder as peak_finder
-        except :
-            print("Abort autopick :: Check if peak_finder.py script is in same folder as this script and runs without error (i.e. can be compiled)!")
-            return
-
-        try:
-            test_if_img_loaded = image_list[n]
-        except:
-            print("Abort autopick :: Image not loaded")
-            return
-
-        ## update globals in case they are not yet refreshed
-        self.refresh_autopick_variables()
-        self.new_angpix()
-        self.new_box_size()
-
-        angpix_gif = (mrc_pixel_size_x / img_pixel_size_x) * angpix
-        print("MRC angpix = %s, GIF anpix = %s" % (angpix, angpix_gif))
-
-        ## if we pass both exception statements, we have enough data to run the autopicker
-        autopicked_gif_coordinates = peak_finder.get_peaks(image_list[n], int(box_size / angpix_gif), int(autopick_min_distance / angpix_gif), autopick_threshold, blur = autopick_blur, NEGATIVE_STAIN = self.NEGATIVE_STAIN.get(), REFINE = True, refine_method = self.REFINE_METHOD.get().lower(), refinement_threshold = autopick_refine_threshold, display_refinement_imgs = self.SHOW_REFINEMENT_IMGS.get(), PRINT_STAR = False)
-
-        # reset the image_coordinates variable and repopulate it below
-        image_coordinates = dict()
-
-        ## pass the new coordinates into the appropriate data structure
-        for coord in autopicked_gif_coordinates:
-            image_coordinates[coord] = 'new_point'
-
-        ## redraw data on screen
-        self.load_img(n)
-
-        return
 
     def debug(self):
         global image_coordinates, marked_imgs, img_box_size, box_size
@@ -435,25 +280,20 @@ class Gui:
         self.input_angpix.delete(0,END)
         self.input_angpix.insert(0, angpix)
 
-        self.input_autopick_threshold.delete(0,END)
-        self.input_autopick_threshold.insert(0, autopick_threshold)
-
-        self.input_autopick_min_distance.delete(0,END)
-        self.input_autopick_min_distance.insert(0, autopick_min_distance)
-
-        self.input_autopick_blur.delete(0,END)
-        self.input_autopick_blur.insert(0, autopick_blur)
-
-        self.input_refinement_threshold.delete(0,END)
-        self.input_refinement_threshold.insert(0, autopick_refine_threshold)
-
-        # self.box_size_ang.config(text="%d Angstroms" % (box_size * angpix))
         return
 
     def save_settings(self):
         """ Write out a settings file for ease of use on re-launching the program in the same directory
         """
-        global image_list, n, mrc_pixel_size_x, mrc_pixel_size_y, angpix, brush_size, box_size, autopick_min_distance, autopick_threshold, autopick_blur, autopick_refine_threshold
+        global image_list, n, mrc_pixel_size_x, mrc_pixel_size_y, angpix, brush_size, box_size, current_im_data
+
+        ## sanity check a file is loaded into buffer, otherwise no reason to save settings
+        try:
+            current_im_data.any()
+        except:
+            print("Abort autopick :: Image not loaded")
+            return
+
         current_img = image_list[n] # os.path.splitext(image_list[n])[0]
         ## save a settings file only if a project is actively open, as assessed by image_list being populated
         if len(image_list) > 0:
@@ -465,10 +305,6 @@ class Gui:
                 f.write("brush_size %s\n" % brush_size)
                 f.write("img_on_save %s\n" % current_img)
                 f.write("box_size %s\n" % box_size)
-                f.write("autopick_min_distance %s\n" % autopick_min_distance)
-                f.write("autopick_threshold %s\n" % autopick_threshold)
-                f.write("autopick_blur %s\n" % autopick_blur)
-                f.write("autopick_refine_threshold %s\n" % autopick_refine_threshold)
 
         print(" >> Saved current settings to 'em_dataset_curator.config'")
 
@@ -508,14 +344,6 @@ class Gui:
                             img_on_save = line2list[1]
                         elif line2list[0] == 'box_size':
                             box_size = int(line2list[1])
-                        elif line2list[0] == 'autopick_min_distance':
-                            autopick_min_distance = int(line2list[1])
-                        elif line2list[0] == 'autopick_threshold':
-                            autopick_threshold = float(line2list[1])
-                        elif line2list[0] == 'autopick_blur':
-                            autopick_blur = float(line2list[1])
-                        elif line2list[0] == 'autopick_refine_threshold':
-                            autopick_refine_threshold = float(line2list[1])
 
             # print(mrc_pixel_size_x, mrc_pixel_size_y, angpix, brush_size, img_on_save)
 
@@ -534,14 +362,14 @@ class Gui:
                 print(" ERROR: Settings file points to image that does not exist in working directory! Resetting index to 0")
 
             ## redraw canvas items with updated global values as the given image index
-            self.load_img(n)
+            self.load_img()
 
         self.update_input_widgets()
         return
 
     def new_box_size(self):
         import re, copy
-        global box_size, image_list, n, image_coordinates, img_pixel_size_x, img_pixel_size_y, mrc_pixel_size_x, img_box_size
+        global box_size, image_list, n, image_coordinates, img_pixel_size_x, img_pixel_size_y, mrc_pixel_size_x, img_box_size, angpix
         user_input = self.input_mrc_box_size.get().strip()
         temp = re.findall(r'\d+', user_input)
         res = list(map(int, temp))
@@ -557,6 +385,10 @@ class Gui:
             return
         ## set the global box_size to the input field value
         box_size = res[0]
+        ## calculate the image box size in pixels
+        scale_factor = mrc_pixel_size_x / img_pixel_size_x
+        img_angpix = angpix * scale_factor
+        img_box_size = int(box_size / img_angpix)
         ## redraw boxes by first deleting it then redrawing it
         self.draw_image_coordinates()
         ## revert focus to main canvas
@@ -602,8 +434,6 @@ class Gui:
 
 
             ## redraw particle positions and boxsize with the new remapped data
-            # self.update_input_widgets()
-            # self.load_img(n)
             self.draw_image_coordinates()
         ## revert focus to main canvas
         self.canvas.focus_set()
@@ -758,7 +588,6 @@ class Gui:
     def on_middle_mouse_release(self, event):
         global n
         self.draw_image_coordinates()
-        # self.load_img(n)
         return
 
     def save_starfile(self):
@@ -818,8 +647,6 @@ class Gui:
             x_coord = mouse_position[0]
             y_coord = mouse_position[1]
             image_coordinates[(x_coord, y_coord)] = 'new_point'
-        ## redraw data on screen
-        # self.load_img(n)
         self.draw_image_coordinates()
         return
 
@@ -857,10 +684,10 @@ class Gui:
 
         if not current_img in marked_imgs:
             marked_imgs.append(current_img)
-            self.load_img(n) ## after updating the list, reload the canvas to show a red marker to the user
+            self.load_img() ## after updating the list, reload the canvas to show a red marker to the user
         else:
             marked_imgs.remove(current_img)
-            self.load_img(n) ## reload the image canvas to remove any markers
+            self.load_img() ## reload the image canvas to remove any markers
         return
 
     def select_all(self, widget):
@@ -900,7 +727,7 @@ class Gui:
                 n = image_list.index(file_name)
 
                 ## redraw canvas items with updated global values as the given image index
-                self.load_img(n)
+                self.load_img()
 
             except:
                 showerror("Open Source File", "Failed to read file\n'%s'" % fname)
@@ -916,13 +743,6 @@ class Gui:
         """ Increments the variable 'n' based on the direction given to the function.
         """
         global n, image_list, file_dir, image_coordinates, img_pixel_size_x, img_pixel_size_y
-
-        ## update the labels for the gif pixel dimensions
-        if IMAGE_LOADED:
-            # img_pixel_size_x = self.current_img.width()
-            # img_pixel_size_y = self.current_img.height()
-            self.img_size.config(text="%s, %s px" % (img_pixel_size_x, img_pixel_size_y))
-            # print("img_pixel_size_x = ", img_pixel_size_x, " img_pixel_size_y = ", img_pixel_size_y)
 
         ## save particles into boxfile, if coordinates are present
         if len(image_coordinates) > 0 :
@@ -953,10 +773,10 @@ class Gui:
         self.reset_globals()
 
         ## load image with index 'n'
-        self.load_img(n)
+        self.load_img()
         return
 
-    def load_img(self, index, input_img = None):
+    def load_img(self, input_img = None):
         """ Load image with specified index
         PARAMETERS
             index = int(); tied to global 'n' variable, indicating which image to load from the list found in the directory
@@ -979,12 +799,12 @@ class Gui:
         ## check if an eplicit image was passed in, otherwise load the image as usual
         if input_img is None:
             # load image onto canvas object using PhotoImage
-            PIL_image = Image.open(image_w_path).convert('L')
+            PIL_image = PIL_Image.open(image_w_path).convert('L')
             self.current_img = ImageTk.PhotoImage(PIL_image)
             current_im_data = np.asarray(PIL_image)
         else:
             ## load the supplied image
-            PIL_image = Image.fromarray(input_img) #.convert('L')
+            PIL_image = PIL_Image.fromarray(input_img) #.convert('L')
             self.current_img = ImageTk.PhotoImage(PIL_image)
             current_im_data = input_img
 
@@ -1002,7 +822,7 @@ class Gui:
         img_pixel_size_y = y
 
         ## update widget displaying pixel size of .GIF file
-        self.img_size.config(text="%s, %s px" % (img_pixel_size_x, img_pixel_size_y))
+        # self.img_size.config(text="%s, %s px" % (img_pixel_size_x, img_pixel_size_y))
 
         base_image_name = os.path.splitext(image_list[n])[0] ## get the base name of the .GIF file
 
@@ -1060,7 +880,7 @@ class Gui:
         user_input = self.input_text.get().strip()
         if user_input in image_list:
             n = image_list.index(user_input)
-            self.load_img(n)
+            self.load_img()
         else:
             self.input_text.delete(0,END)
             self.input_text.insert(0,"File not found.")
@@ -1140,7 +960,7 @@ class Gui:
             except:
                 showerror("Open Source File", "Failed to read file\n'%s'" % fname)
 
-            self.load_img(n) ## reload image in case it has now been marked
+            self.load_img() ## reload image in case it has now been marked
 
             return
 
@@ -1233,21 +1053,6 @@ class Gui:
         """
         """
         global image_coordinates, script_path, file_dir, image_list, n, current_im_data
-        try:
-            sys.path.append(script_path)
-            import image_handler #as image_handler
-        except :
-            print("Abort auto_contrast :: Check if image_handler.py script is in same folder as this script and runs without error (i.e. can be compiled)!")
-            return
-
-        # ## get the current image name with full path
-        # image_w_path = file_dir + "/" + image_list[n]
-        #
-        # ## use Pillow to open the image as a grayscale
-        # PIL_image = Image.open(image_w_path).convert("L")
-        # ## convert the image data to a numpy array for processing
-        # im = np.array(PIL_image)
-        # print(type(im), im.shape, "pixels", ", intensity (min, max) = ", np.min(im), np.max(im))
 
         im = current_im_data
         ## use the image processing functions to modify the desired img
@@ -1255,33 +1060,19 @@ class Gui:
 
         ## load the modified img onto the canvas
         current_im_data = im
-        self.load_img(n, im)
+        self.load_img(im)
         return
 
     def contrast_by_selected_particles(self):
         """
         """
         global image_coordinates, script_path, file_dir, image_list, n, mrc_pixel_size_x, img_pixel_size_x, angpix, box_size, current_im_data
-        try:
-            sys.path.append(script_path)
-            import image_handler #as image_handler
-        except :
-            print("Abort auto_contrast :: Check if image_handler.py script is in same folder as this script and runs without error (i.e. can be compiled)!")
-            return
 
         ## box_size is a value given in Angstroms, we need to convert it to pixels
         scale_factor = mrc_pixel_size_x / img_pixel_size_x
         angpix_gif = angpix * scale_factor
         gif_box_width = int(box_size / angpix_gif) ## this is the pixel size of the gif image, we can use this to calculate the size of the box to draw
 
-        # ## get the current image name with full path
-        # image_w_path = file_dir + "/" + image_list[n]
-        #
-        # ## use Pillow to open the image as a grayscale
-        # PIL_image = Image.open(image_w_path).convert("L")
-        # ## convert the image data to a numpy array for processing
-        # im = np.array(PIL_image)
-        # print(type(im), im.shape, "pixels", ", intensity (min, max) = ", np.min(im), np.max(im))
         im = current_im_data
         ## extract the particle images from the centered coordinates
         extracted_imgs = image_handler.extract_boxes(im, gif_box_width, image_coordinates, DEBUG = True)
@@ -1295,23 +1086,130 @@ class Gui:
 
         ## load the modified img onto the canvas
         current_im_data = im
-        self.load_img(n, im)
+        self.load_img(im)
 
         return
 
     def gaussian_blur(self):
         global n, current_im_data
-        try:
-            sys.path.append(script_path)
-            import image_handler #as image_handler
-        except :
-            print("Abort auto_contrast :: Check if image_handler.py script is in same folder as this script and runs without error (i.e. can be compiled)!")
-            return
         im = current_im_data
         im = image_handler.gaussian_blur(im, 1.5)
         current_im_data = im
-        self.load_img(n, im)
+        self.load_img(im)
         return
+
+    def local_contrast(self):
+        global img_box_size, current_im_data
+        ## update box size globals before running filtering
+        self.new_box_size()
+        im = current_im_data
+        im = image_handler.local_contrast(im, img_box_size, DEBUG = True)
+        current_im_data = im
+        self.load_img(im)
+        return
+
+    def toggle_negative_stain(self):
+        if self.NEGATIVE_STAIN.get() == True:
+            print("Negative stain mode is ON")
+        else:
+            print("Negative stain mode if OFF")
+        return
+
+    def bool_img(self):
+        global current_im_data
+        im = current_im_data
+        cutoff = 100 ## shoudl I expose this value to the user?
+        im = image_handler.bool_img(im, cutoff)
+        current_im_data = im
+        self.load_img(im)
+        return
+
+    def autopick(self):
+        # global image_list, n, script_path, image_coordinates, angpix, autopick_min_distance, autopick_threshold, autopick_blur, autopick_refinement_method, autopick_refine_threshold
+        global n, current_im_data, img_box_size, image_coordinates
+        ## sanity check an image is loaded into buffer
+        try:
+            current_im_data.any()
+        except:
+            print("Abort autopick :: Image not loaded")
+            return
+        ## update globals before running
+        self.new_box_size()
+        ## determine if we should invert the image for autopicking (autopicker picks white peaks)
+        if self.NEGATIVE_STAIN.get() == True:
+            invert_img = False
+        else:
+            invert_img = True
+
+        autopicked_coords = image_handler.find_local_peaks(current_im_data, img_box_size, INVERT = invert_img, DEBUG = True)
+
+        ## WIP: need a way to resolve close coordinates overlapping
+
+        # reset the image_coordinates variable and repopulate it below
+        image_coordinates = dict()
+
+        ## pass the new coordinates into the appropriate data structure
+        for coord in autopicked_coords:
+            image_coordinates[coord] = 'new_point'
+
+        ## redraw data on screen
+        self.draw_image_coordinates()
+
+        return
+
+    def clear_coordinates(self):
+        global image_coordinates
+        # reset the image_coordinates variable and repopulate it below
+        image_coordinates = dict()
+        ## redraw data on screen
+        self.draw_image_coordinates()
+        return
+
+    def default_autopick(self):
+        """ Some testing has shown that decent autopicking results are attained using the following
+            image processing steps for autopicking
+        """
+        global current_im_data, img_box_size, image_coordinates
+
+        ## sanity check an image is loaded into buffer
+        try:
+            current_im_data.any()
+        except:
+            print("Abort naive_autopick :: Image not loaded")
+            return
+
+        im = current_im_data
+        im = image_handler.local_contrast(im, img_box_size, DEBUG = True)
+        im = image_handler.gaussian_blur(im, 1.5)
+        im = image_handler.auto_contrast(im)
+        im = image_handler.bool_img(im, 100)
+
+        ## update globals before running
+        self.new_box_size()
+        ## determine if we should invert the image for autopicking (autopicker picks white peaks)
+        if self.NEGATIVE_STAIN.get() == True:
+            invert_img = False
+        else:
+            invert_img = True
+
+        autopicked_coords = image_handler.find_local_peaks(im, img_box_size, INVERT = invert_img, DEBUG = True)
+
+        ## WIP: need a way to resolve close coordinates overlapping
+
+        # reset the image_coordinates variable and repopulate it below
+        image_coordinates = dict()
+
+        ## pass the new coordinates into the appropriate data structure
+        for coord in autopicked_coords:
+            image_coordinates[coord] = 'new_point'
+
+        ## redraw data on screen
+        self.draw_image_coordinates()
+        return
+
+
+
+
 
 
 ##########################
@@ -1319,46 +1217,48 @@ class Gui:
 ##########################
 if __name__ == '__main__':
     import numpy as np
+    from tkinter import *
+    from tkinter.filedialog import askopenfilename
+    from tkinter.messagebox import showerror
+    import os, string, sys
+    from PIL import Image as PIL_Image
+    from PIL import ImageTk
+    from tkinter import ttk
+    import re ## for use of re.findall() function to extract numbers from strings
 
-    ## Get the execution path of this script so we can find modules in its root folder, if necessary
+    ## Get the execution path of this script so we can find local modules
     script_path = os.path.dirname(os.path.abspath(sys.argv[0]))
-    print("Exectuable path = ", script_path)
+
+    try:
+        sys.path.append(script_path)
+        import image_handler #as image_handler
+    except :
+        print("Abort auto_contrast :: Check if image_handler.py script is in same folder as this script and runs without error (i.e. can be compiled)!")
 
     n=0
     img_on_save = ''
-
     IMAGE_LOADED = False # Flag to check if an image is loaded (to avoid throwing errors)
     current_im_data = None ## np array of grayscale image current being displayed
-
     RIGHT_MOUSE_PRESSED = False # Flag to implement right-mouse activated brush icon
-
-    # initialize global values here
     image_list = []
     file_name = ''
     file_dir = '.'
-
     marked_imgs = []
-
     image_coordinates = {} # dictionary in format, { (gif_x, gif_y) : (mrc_x, mrc_y), ... }, points given as top left, bottom left corner of box, respectively
     img_box_size = 100 # how many pixels is the width and height of a particle box
     box_size = 100 # box size in .box file
 
-    autopick_min_distance = int(box_size / 2)
-    autopick_threshold = 0.1
-    autopick_blur = 2
-    autopick_refinement_method = ""
-    autopick_refine_threshold = 0.1
+    autopick_min_distance = int(box_size / 2) ## make this exposed to the user?
 
-    ## gif image dimensions are updated every time we load a new image, these globals are then used by other functins for scaling between .MRC pixel dimensions
+    ## image dimensions are updated every time we load a new image, these globals are then used by other functins for scaling between .MRC pixel dimensions
     img_pixel_size_x = 0
     img_pixel_size_y = 0
 
-    # box_size_angstroms = 100 # Angstroms # adjust this with a widget
     angpix = 1.94 # angstroms per pixel in MRC file from which GIF came from # adjust with widget
     mrc_pixel_size_x = 4092
     mrc_pixel_size_y = 4092
 
-    brush_size = 20 # size of erase brush
+    brush_size = 20 # default size of erase brush
 
     root = Tk()
     app = Gui(root)

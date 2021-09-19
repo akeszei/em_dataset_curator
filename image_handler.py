@@ -2,12 +2,20 @@
     Common processing functions for grayscale images: (x, y), where x,y in range (0,255)
 """
 
-def local_contrast(im_array, box_size):
+def local_contrast(im_array, box_size, DEBUG = False):
     """ REF: https://scikit-image.org/docs/dev/auto_examples/color_exposure/plot_local_equalize.html
     """
     from skimage.filters import rank
     from skimage.morphology import disk
     footprint = disk(box_size * 2)
+    if DEBUG:
+        print("=======================================")
+        print(" image_handler :: local_contrast")
+        print("=======================================")
+        print("  input img dim = ", im_array.shape)
+        print("  box_size = %s px" % box_size)
+        print("  local contrast footprint = %s px" % footprint)
+        print("=======================================")
     im = rank.equalize(im_array, footprint)
     return im
 
@@ -219,17 +227,28 @@ def bool_img(im_array, threshold):
     im_array = np.where(im_array >= threshold, 255, 0)
     return im_array
 
-def find_local_maxima(im_array, box_size, DEBUG = False):
+def find_local_peaks(im_array, box_size, INVERT = False, DEBUG = False):
     """
     """
     from skimage.measure import label, regionprops
+    if DEBUG:
+        print("=======================================")
+        print(" image_handler :: find_local_peaks")
+        print("=======================================")
+        print("  input img dim = ", im_array.shape)
+        print("  box_size = %s px" % box_size)
 
-    labeled_img = label(im_array, connectivity = 2)
+    if INVERT:
+        if DEBUG:
+            print("  invert color scale for autopicking")
+        im_array = 255 - im_array
+
+    labeled_img = label(im_array) #, connectivity = 2)
     regions = regionprops(labeled_img)
     coordinates = []
 
-    min_area = 4 ## minimum # of pixels for a labeled feature to be added as a coordinate
-    max_area = box_size
+    min_area = int(box_size / 3) ## minimum # of pixels for a labeled feature to be added as a coordinate
+    max_area = int(box_size * box_size * 1.5)
     for props in regions:
         area = getattr(props, 'area')
         if area >= min_area:
@@ -237,11 +256,14 @@ def find_local_maxima(im_array, box_size, DEBUG = False):
                 y0, x0 = props.centroid
                 coordinates.append((x0, y0))
 
+
+
     if DEBUG:
-        # print(" Find local maxima peaks using search window size of: %s" % search_window)
-        print("%s coordinates found!" % len(coordinates))
+        print("  >> %s coordinates found!" % len(coordinates))
+        print("=======================================")
 
     return coordinates
+
 
 
 #############################################
