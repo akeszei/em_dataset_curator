@@ -55,7 +55,7 @@ class Gui:
         dropdown_functions.add_command(label="Local contrast", command=self.local_contrast)
         dropdown_functions.add_command(label="Blur", command=self.gaussian_blur)
         dropdown_functions.add_command(label="Auto-contrast", command=self.auto_contrast)
-        dropdown_functions.add_command(label="Make bool img", command=self.bool_img)
+        dropdown_functions.add_command(label="Make bool img", command=self.open_bool_img_panel)
         dropdown_functions.add_command(label="Contrast from selection", command=self.contrast_by_selected_particles)
         dropdown_functions.add_command(label="Reset img", command=self.load_img)
         dropdown_functions.add_command(label="Clear coordinates", command=self.clear_coordinates)
@@ -1115,11 +1115,48 @@ class Gui:
             print("Negative stain mode if OFF")
         return
 
-    def bool_img(self):
+    def open_bool_img_panel(self):
+        """
+            Open a panel with a slider to set a boolean pixel intensity value cutoff that can be applied
+        """
         global current_im_data
-        im = current_im_data
-        cutoff = 100 ## shoudl I expose this value to the user?
-        im = image_handler.bool_img(im, cutoff)
+        ## create the top level panel
+        bool_img_panel = Toplevel()
+        ## Set up shape
+        bool_img_panel.title("Apply boolean cutoff")
+        bool_img_panel.geometry("430x64")
+        ## when the panel is opened, cache the input image
+        cached_im_data = np.copy(current_im_data)
+
+        cutoff_slider = Scale(bool_img_panel, from_=0, to=255, orient=HORIZONTAL, length = 250, sliderlength = 20)
+        cutoff_slider.set(100)
+        apply_button = Button(bool_img_panel, text="Apply", command= lambda: self.bool_img(cutoff_slider.get(), cached_im_data), width=10)
+        undo_button = Button(bool_img_panel, text="Undo", command= lambda: self.load_img(cached_im_data), width=10)
+
+        ## Pack widgets into grid
+        cutoff_slider.grid(row=1, column=1)
+        apply_button.grid(row=1, column = 2, sticky = W)
+        undo_button.grid(row=1, column = 3, sticky = W)
+
+        ## Add some hotkeys for ease of use
+        bool_img_panel.bind('<Left>', lambda event: cutoff_slider.set(cutoff_slider.get() - 1))
+        bool_img_panel.bind('<Right>', lambda event: cutoff_slider.set(cutoff_slider.get() + 1))
+        bool_img_panel.bind('<Return>', lambda event: self.bool_img(cutoff_slider.get(), cached_im_data))
+        bool_img_panel.bind('<KP_Enter>', lambda event: self.bool_img(cutoff_slider.get(), cached_im_data)) # numpad 'Return' key
+
+        ## set the focus to this panel immediately on start up
+        bool_img_panel.focus()
+        return
+
+    def bool_img(self, cutoff, im_array = None):
+        global current_im_data
+        print("Apply bool cutoff of : ", cutoff)
+
+        if im_array is None:
+            im = image_handler.bool_img(current_im_data, cutoff)
+        else:
+            im = image_handler.bool_img(im_array, cutoff)
+
         current_im_data = im
         self.load_img(im)
         return
@@ -1210,14 +1247,13 @@ class Gui:
 
 
 
-
-
 ##########################
 ### RUN BLOCK
 ##########################
 if __name__ == '__main__':
     import numpy as np
     from tkinter import *
+    from tkinter import Toplevel
     from tkinter.filedialog import askopenfilename
     from tkinter.messagebox import showerror
     import os, string, sys
@@ -1261,5 +1297,11 @@ if __name__ == '__main__':
     brush_size = 20 # default size of erase brush
 
     root = Tk()
+    try:
+        icon_path = script_path + '/icon.ico'
+        icon = PhotoImage(file= icon_path)
+        root.tk.call('wm', 'iconphoto', root._w, icon)
+    except:
+        print('Could not find: ' + script_path + '/icon.ico')
     app = Gui(root)
     root.mainloop()
