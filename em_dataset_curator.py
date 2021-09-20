@@ -806,7 +806,7 @@ class Gui:
             ## load the supplied image
             PIL_image = PIL_Image.fromarray(input_img.astype(np.uint8))  #.convert('L')
             self.current_img = ImageTk.PhotoImage(PIL_image)
-            current_im_data = input_img
+            current_im_data = input_img.astype(np.uint8)
 
 
         # self.current_img = PhotoImage(file=image_w_path)
