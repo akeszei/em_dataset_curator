@@ -247,7 +247,7 @@ def find_local_peaks(im_array, box_size, INVERT = False, DEBUG = False):
     regions = regionprops(labeled_img)
     coordinates = []
 
-    min_area = int(box_size / 3) ## minimum # of pixels for a labeled feature to be added as a coordinate
+    min_area = int(box_size / 2) ## minimum # of pixels for a labeled feature to be added as a coordinate
     max_area = int(box_size * box_size * 1.5)
     for props in regions:
         area = getattr(props, 'area')
