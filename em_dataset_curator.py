@@ -297,7 +297,7 @@ class Gui:
         current_img = image_list[n] # os.path.splitext(image_list[n])[0]
         ## save a settings file only if a project is actively open, as assessed by image_list being populated
         if len(image_list) > 0:
-            with open('em_dataset_curator.config', 'w') as f :
+            with open('.em_dataset_curator.config', 'w') as f :
                 f.write("## Last used settings for em_dataset_curator.py\n")
                 f.write("mrc_pixel_size_x %s\n" % mrc_pixel_size_x)
                 f.write("mrc_pixel_size_y %s\n" % mrc_pixel_size_y)
@@ -324,7 +324,7 @@ class Gui:
                     if not line.strip() in marked_imgs:
                         marked_imgs.append(line.strip())
 
-        settingsfile = 'em_dataset_curator.config'
+        settingsfile = '.em_dataset_curator.config'
 
         if os.path.exists(settingsfile):
             ## update marked file list with file in directory
@@ -804,7 +804,7 @@ class Gui:
             current_im_data = np.asarray(PIL_image)
         else:
             ## load the supplied image
-            PIL_image = PIL_Image.fromarray(input_img) #.convert('L')
+            PIL_image = PIL_Image.fromarray(input_img).convert('L')
             self.current_img = ImageTk.PhotoImage(PIL_image)
             current_im_data = input_img
 
@@ -1269,7 +1269,7 @@ if __name__ == '__main__':
         sys.path.append(script_path)
         import image_handler #as image_handler
     except :
-        print("Abort auto_contrast :: Check if image_handler.py script is in same folder as this script and runs without error (i.e. can be compiled)!")
+        print(" ERROR :: Check if image_handler.py script is in same folder as this script and runs without error (i.e. can be compiled)!")
 
     n=0
     img_on_save = ''

@@ -5,21 +5,27 @@
 def local_contrast(im_array, box_size, DEBUG = False):
     """ REF: https://scikit-image.org/docs/dev/auto_examples/color_exposure/plot_local_equalize.html
     """
-    from skimage.filters import rank
-    from skimage.morphology import disk
+    try:
+        from skimage.filters import rank
+        from skimage.morphology import disk
+    except:
+        print(" ERROR :: scikit-image not installed, try:")
+        print("     pip install scikit-image")
+        return
+
     footprint = disk(box_size * 2)
     if DEBUG:
         print("=======================================")
         print(" image_handler :: local_contrast")
-        print("=======================================")
+        print("---------------------------------------")
         print("  input img dim = ", im_array.shape)
         print("  box_size = %s px" % box_size)
-        print("  local contrast footprint = %s px" % footprint)
+        print("  local contrast footprint = ", footprint.shape)
         print("=======================================")
     im = rank.equalize(im_array, footprint)
     return im
 
-def auto_contrast(im_array):
+def auto_contrast(im_array, DEBUG = True):
     """ Rescale the image intensity levels to a reasonable range using the top/bottom 2 percent
         of the data to define the intensity levels
     """
@@ -27,6 +33,16 @@ def auto_contrast(im_array):
     ## avoid hotspot pixels by looking at a group of pixels at the extreme ends of the image
     minval = np.percentile(im_array, 2)
     maxval = np.percentile(im_array, 98)
+
+    if DEBUG:
+        print("=======================================")
+        print(" image_handler :: auto_contrast")
+        print("---------------------------------------")
+        print("  input img dim = ", im_array.shape)
+        print("  original img min, max = (%s, %s)" % (np.min(im_array), np.max(im_array)))
+        print("  stretch to new min, max = (%s %s)" % (minval, maxval))
+        print("=======================================")
+
     ## remove pixles above/below the defined limits
     im_array = np.clip(im_array, minval, maxval)
     ## rescale the image into the range 0 - 255
@@ -34,7 +50,7 @@ def auto_contrast(im_array):
 
     return im_array
 
-def sigma_contrast(im_array, sigma):
+def sigma_contrast(im_array, sigma, DEBUG = True):
     """ Rescale the image intensity levels to a range defined by a sigma value (the # of
         standard deviations to keep). Can perform better than auto_contrast when there is
         a lot of dark pixels throwing off the level balancing.
@@ -42,9 +58,18 @@ def sigma_contrast(im_array, sigma):
     import numpy as np
     stdev = np.std(im_array)
     mean = np.mean(im_array)
-    print("Image intensity data (mean, stdev) = (%s, %s)" % (mean, stdev))
     minval = mean - (stdev * sigma)
     maxval = mean + (stdev * sigma)
+
+    if DEBUG:
+        print("=======================================")
+        print(" image_handler :: sigma_contrast")
+        print("---------------------------------------")
+        print("  input img dim = ", im_array.shape)
+        print("  img mean, stdev = (%s, %s)" % (mean, stdev))
+        print("  stretch to new min, max = (%s %s)" % (minval, maxval))
+        print("=======================================")
+
     ## remove pixles above/below the defined limits
     im_array = np.clip(im_array, minval, maxval)
     ## rescale the image into the range 0 - 255
@@ -116,8 +141,15 @@ def find_intensity_range(im_arrays, DEBUG = True):
         print("    ... (min, max) = (%s, %s)" % (min, max))
     return (min, max)
 
-def gaussian_blur(im_array, sigma):
+def gaussian_blur(im_array, sigma, DEBUG = True):
     import scipy.ndimage as ndimage
+    if DEBUG:
+        print("=======================================")
+        print(" image_handler :: gaussian_blur")
+        print("---------------------------------------")
+        print("  input img dim = ", im_array.shape)
+        print("  sigma = ", sigma)
+        print("=======================================")
 
     blurred_img = ndimage.gaussian_filter(im_array, sigma)
     return blurred_img
@@ -230,7 +262,12 @@ def bool_img(im_array, threshold):
 def find_local_peaks(im_array, box_size, INVERT = False, DEBUG = False):
     """
     """
-    from skimage.measure import label, regionprops
+    try:
+        from skimage.measure import label, regionprops
+    except:
+        print(" ERROR :: scikit-image not installed, try:")
+        print("     pip install scikit-image")
+        return
     if DEBUG:
         print("=======================================")
         print(" image_handler :: find_local_peaks")
