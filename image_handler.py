@@ -245,7 +245,7 @@ def template_cross_correlate(im_array, template, threshold, DEBUG = False):
     cc = np.where(cc < cc_threshold_cutoff, 0, 255)
     return cc
 
-def bool_img(im_array, threshold):
+def bool_img(im_array, threshold, DEBUG = False):
     """
         For a given threshold value (intensity, i.e. between 0 - 255), make any pixels below the
         threshold equal to 255 (white) and any above 0 (black)
@@ -255,11 +255,16 @@ def bool_img(im_array, threshold):
         im_array = np array as grayscale image (0 - 255)
     """
     import numpy as np
+    if DEBUG:
+        print("=======================================")
+        print(" image_handler :: bool_img")
+        print("=======================================")
+        print("  intensity cutoff = ", threshold)
 
     im_array = np.where(im_array >= threshold, 255, 0)
     return im_array
 
-def find_local_peaks(im_array, box_size, INVERT = False, DEBUG = False):
+def find_local_peaks(im_array, min_area, max_area, INVERT = False, DEBUG = False):
     """
     """
     try:
@@ -273,7 +278,9 @@ def find_local_peaks(im_array, box_size, INVERT = False, DEBUG = False):
         print(" image_handler :: find_local_peaks")
         print("=======================================")
         print("  input img dim = ", im_array.shape)
-        print("  box_size = %s px" % box_size)
+        print("  min_area = %s px" % min_area)
+        print("  max_area = %s px" % max_area)
+
 
     if INVERT:
         if DEBUG:
@@ -284,8 +291,8 @@ def find_local_peaks(im_array, box_size, INVERT = False, DEBUG = False):
     regions = regionprops(labeled_img)
     coordinates = []
 
-    min_area = int(box_size / 2) ## minimum # of pixels for a labeled feature to be added as a coordinate
-    max_area = int(box_size * box_size * 1.5)
+    # min_area = int(box_size / 2) ## minimum # of pixels for a labeled feature to be added as a coordinate
+    # max_area = int(box_size * box_size * 1.5)
     for props in regions:
         area = getattr(props, 'area')
         if area >= min_area:
