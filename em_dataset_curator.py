@@ -1029,9 +1029,16 @@ class MainUI:
             if len(image_coordinates) == 0: ## avoid overwriting an existing image_coordinates dictionary if it is already present
                 counter = 0
                 star_coordinate_file = ""
+                ## to find matching files we need precise names to look for, set them up here:
+                match_file1 = base_image_name + ".star"
+                match_file2 = base_image_name + "_manualpick.star"
+                match_file3 = base_image_name + "_CURATED.star"
+                # print("Match file names = %s, %s, %s" % (match_file1, match_file2, match_file3))
+
                 ## find the matching star file if it exists
                 for fname in os.listdir(file_dir): ## iterate over the directory
-                    if base_image_name in fname and fname[-5:] == ".star": ## find any files that match the base .GIF file name and end in .STAR
+                    if fname == match_file1 or fname == match_file2 or fname == match_file3:
+                        # print("MATCH: %s -> %s" % (fname, image_list[n]))
                         counter += 1
                         star_coordinate_file = fname
                         if counter > 1: print(">>> WARNING: Multiple .STAR files found for this image (e.g. multiple files match: " + base_image_name + "*.star)")
