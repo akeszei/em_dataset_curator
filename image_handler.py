@@ -2,6 +2,19 @@
     Common processing functions for grayscale images: (x, y), where x,y in range (0,255)
 """
 
+def _memoryview_safe(x):
+    """Make array safe to run in a Cython memoryview-based kernel. These
+    kernels typically break down with the error ``ValueError: buffer source
+    array is read-only`` when running in dask distributed.
+    SEE: https://github.com/dask/distributed/issues/1978
+    """
+    if not x.flags.writeable:
+        if not x.flags.owndata:
+            x = x.copy(order='C')
+        x.setflags(write=True)
+    return x
+
+
 def local_contrast(im_array, box_size, DEBUG = False):
     """ REF: https://scikit-image.org/docs/dev/auto_examples/color_exposure/plot_local_equalize.html
     """
@@ -12,6 +25,9 @@ def local_contrast(im_array, box_size, DEBUG = False):
         print(" ERROR :: scikit-image not installed, try:")
         print("     pip install scikit-image")
         return
+
+    ## ensure the input array is writable 
+    im_array = _memoryview_safe(im_array)
 
     footprint = disk(box_size * 2)
     if DEBUG:
