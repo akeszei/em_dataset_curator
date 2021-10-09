@@ -1,0 +1,2 @@
+2021-10-09:
+ - Opening images from the File menu does not load them properly (using arrow keys works, however). Fix the load up sequence
