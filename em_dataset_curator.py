@@ -362,13 +362,14 @@ class MainUI:
         mrc_pixel_size_y = PARAMS['mrc_dimensions'][1]
         angpix = PARAMS['angpix']
         box_size= PARAMS['box_size']
+        current_im_data = PARAMS['current_img_data']
 
         save_fname = '.em_dataset_curator.config'
         ## sanity check a file is loaded into buffer, otherwise no reason to save settings
         try:
             current_im_data.any()
         except:
-            print("Abort autopick :: Image not loaded")
+            print("Abort save settings :: No image is loaded")
             return
 
         current_img = image_list[n] # os.path.splitext(image_list[n])[0]
