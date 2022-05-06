@@ -7,10 +7,12 @@ Designed to be used after running `mrc2img.py` across a dataset to generate smal
 Run this script in a directory of `.jpg` images (created from motion corrected `.mrc` files) and curate your dataset. If a `.star` file is present with the same basename as the image, this program will attempt to load all coordinates from it. Coordinates after loading/picking are always saved with the suffix `_CURATED.star` once navigating away from an image or running a save function call. Once made, the `_CURATED.star` file will always be loaded over all other matches in the current directory. The goal of this program is to quickly let the user assess image quality and assess/modify autopicking results:
 #### Buttons
 `d ` = mark image (a red box will appear over margins of image).
+
 `Ctrl + S` = save a `marked_imgs.txt` file in working directory with a list of marked images. 
+
 `Left click` = Select particle (or, remove selected particle if already selected).
-`Middle click` = Hide all markup to see image below.
-`Right click` = Activate erase brush, hold & drag to erase on-the-fly
+`Middle click` = While toggled, hide all markup to see image below.
+`Right click` = Activate erase brush, hold & drag to erase on-the-fly.
 `Mouse scrollwheel` = Increase/decrease eraser tool brush size
 
 #### (i) Method for curating micrographs:
