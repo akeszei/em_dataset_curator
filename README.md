@@ -11,8 +11,11 @@ Run this script in a directory of `.jpg` images (created from motion corrected `
 `Ctrl + S` = save a `marked_imgs.txt` file in working directory with a list of marked images. 
 
 `Left click` = Select particle (or, remove selected particle if already selected).
+
 `Middle click` = While toggled, hide all markup to see image below.
+
 `Right click` = Activate erase brush, hold & drag to erase on-the-fly.
+
 `Mouse scrollwheel` = Increase/decrease eraser tool brush size
 
 #### (i) Method for curating micrographs:
