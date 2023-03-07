@@ -971,6 +971,8 @@ class MainUI:
         file_dir = PARAMS['file_dir']
         RESIZE_IMG = PARAMS['RESIZE_IMG']
         img_resize_percent = PARAMS['img_resize_percent']
+        ## allow the user some feedback as to progress through the image stack
+        print(" Load img %s / %s" % (n, len(image_list)))
 
         ## force a refresh on all canvas objects based on changing global variables
         self.canvas.delete('marker')
