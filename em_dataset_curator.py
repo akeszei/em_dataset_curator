@@ -24,6 +24,7 @@ class MainUI:
         menubar.add_cascade(label="Functions", menu=dropdown_functions)
         dropdown_functions.add_command(label="Local contrast", command=self.local_contrast)
         dropdown_functions.add_command(label="Blur", command=self.gaussian_blur)
+        dropdown_functions.add_command(label="Local contrast & Blur (Ctrl + C)", command=self.local_contrast_and_blur)
         dropdown_functions.add_command(label="Auto-contrast", command=self.auto_contrast)
         dropdown_functions.add_command(label="Contrast from selection", command=self.contrast_by_selected_particles)
         dropdown_functions.add_command(label="Reset img", command=self.load_img)
@@ -51,7 +52,7 @@ class MainUI:
         ####################################
         self.canvas = tk.Canvas(master, width = 650, height = 600, background="gray", cursor="cross red red")
         # self.current_dir = Label(master, font=("Helvetica", 12), text="")
-        self.input_text = tk.Entry(master, width=30, font=("Helvetica", 16), highlightcolor="blue", borderwidth=None, relief=tk.FLAT, foreground="black", background="light gray")
+        self.input_text = tk.Entry(master, width=90, font=("Helvetica", 12), highlightcolor="blue", borderwidth=None, relief=tk.FLAT, foreground="black", background="light gray")
         # self.browse = Button(master, text="Browse", command=self.load_file, width=10)
         self.settings_header = tk.Label(master, font=("Helvetica, 16"), text="Settings")
         self.mrc_dimensions_label = tk.Label(master, font=("Helvetica", 12), text=".MRC dimensions (X, Y)")
@@ -112,6 +113,7 @@ class MainUI:
         self.autopick_button.bind('<KP_Enter>', lambda event: self.default_autopick())
 
         self.canvas.bind('<Control-KeyRelease-s>', lambda event: self.write_marked())
+        self.canvas.bind('<Control-KeyRelease-c>', lambda event: self.local_contrast_and_blur())
         self.canvas.bind("<ButtonPress-1>", self.on_left_mouse_down)
         self.canvas.bind("<ButtonPress-2>", self.on_middle_mouse_press)
         self.canvas.bind("<ButtonRelease-2>", self.on_middle_mouse_release)
@@ -137,6 +139,11 @@ class MainUI:
         self.autopickPanel_instance = None
         self.helpPanel_instance = None
         ####################################
+
+    def local_contrast_and_blur(self):
+        self.local_contrast()
+        self.gaussian_blur()
+        # print("")
 
     def open_panel(self, panelType = 'None'):
         global PARAMS
