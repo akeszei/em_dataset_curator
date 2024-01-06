@@ -1000,7 +1000,8 @@ class MainUI:
                     im = im.resize(new_dimensions)
                     print(" Resize image to", new_dimensions)
 
-                im = im.convert('L') ## make grascale
+                # im = im.convert('L') ## make grayscale
+                im = im.convert('RGB') ## make RGB
                 self.current_img = ImageTk.PhotoImage(im)
                 current_im_data = np.asarray(im)
                 PARAMS['original_img_data'] = current_im_data
@@ -1068,7 +1069,7 @@ class MainUI:
         PARAMETERS
             file = str(); name of the file (e.g. 'test.jpg')
         """
-        image_formats = [".gif", ".jpg", ".jpeg"]
+        image_formats = [".gif", ".jpg", ".jpeg", ".JPG"]
         for suffix in image_formats:
             if suffix in file:
                 return True
