@@ -1000,8 +1000,8 @@ class MainUI:
                     im = im.resize(new_dimensions)
                     print(" Resize image to", new_dimensions)
 
-                # im = im.convert('L') ## make grayscale
-                im = im.convert('RGB') ## make RGB
+                im = im.convert('L') ## make grayscale
+                # im = im.convert('RGB') ## make RGB ;; note that local contrast function does not work on RGB images atm   
                 self.current_img = ImageTk.PhotoImage(im)
                 current_im_data = np.asarray(im)
                 PARAMS['original_img_data'] = current_im_data
