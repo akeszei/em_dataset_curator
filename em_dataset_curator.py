@@ -39,7 +39,9 @@ class MainUI:
         menubar.add_cascade(label="Resize img", menu=dropdown_resize)
         dropdown_resize.add_command(label="Original", command= lambda: self.toggle_img_resize(100))
         dropdown_resize.add_command(label="75%", command= lambda: self.toggle_img_resize(75))
+        dropdown_resize.add_command(label="70%", command= lambda: self.toggle_img_resize(70))
         dropdown_resize.add_command(label="50%", command= lambda: self.toggle_img_resize(50))
+        dropdown_resize.add_command(label="35%", command= lambda: self.toggle_img_resize(35))
         dropdown_resize.add_command(label="25%", command= lambda: self.toggle_img_resize(25))
 
         dropdown_help = tk.Menu(menubar)
@@ -64,6 +66,8 @@ class MainUI:
         self.angpix_label = tk.Label(master, font=("Helvetica", 12), text=".MRC Ang/pix")
         self.input_angpix = tk.Entry(master, width=18, font=("Helvetica", 12))
         self.input_angpix.insert(tk.END, "%s" % PARAMS['angpix'])
+        self.FLIPY = tk.BooleanVar(master,False)
+        self.toggle_flipY = tk.Checkbutton(master, text='Flip Y', variable=self.FLIPY, onvalue=True, offvalue=False, command=self.toggle_flipY)
         self.NEGATIVE_STAIN = tk.BooleanVar(master, False)
         self.negative_stain_toggle = tk.Checkbutton(master, text='Negative stain', variable=self.NEGATIVE_STAIN, onvalue=True, offvalue=False, command=self.toggle_negative_stain)
         self.separator = ttk.Separator(master, orient='horizontal')
@@ -84,6 +88,7 @@ class MainUI:
         self.input_mrc_box_size.grid(row=7, column=1, padx=5, pady=0, sticky=(tk.N, tk.W))
         self.angpix_label.grid(row=9, column=1, padx=5, pady=0, sticky=(tk.S, tk.W))
         self.input_angpix.grid(row=10, column=1, padx=5, pady=0, sticky=(tk.N, tk.W))
+        self.toggle_flipY.grid(row=11, column=1, padx=5, pady=0, sticky=(tk.N, tk.W))
 
         self.separator.grid(row=20, column =1, sticky=tk.EW)
         self.autopick_header.grid(row=21, column = 1, sticky = tk.W)
@@ -991,16 +996,20 @@ class MainUI:
         self.input_text.delete(0, tk.END)
         self.input_text.insert(0,image_list[n])
 
-        ## check if an eplicit image was passed in, otherwise load the image as usual
+        ## check if an explicit image was passed in, otherwise load the image as usual
         if input_img is None:
             # load image onto canvas object using PhotoImage
             with PIL_Image.open(image_w_path) as im:
                 if RESIZE_IMG:
                     new_dimensions = self.get_resized_dimensions(img_resize_percent, im.size)
                     im = im.resize(new_dimensions)
+                    
                     print(" Resize image to", new_dimensions)
 
                 im = im.convert('L') ## make grayscale
+                if self.FLIPY.get() == True:
+                    im = im.transpose(PIL_Image.FLIP_TOP_BOTTOM) ## flip image 
+
                 # im = im.convert('RGB') ## make RGB ;; note that local contrast function does not work on RGB images atm   
                 self.current_img = ImageTk.PhotoImage(im)
                 current_im_data = np.asarray(im)
@@ -1321,6 +1330,11 @@ class MainUI:
         im = image_handler.local_contrast(im, img_box_size, DEBUG = True)
         self.load_img(im)
         return
+
+    def toggle_flipY(self):
+        print(" Flip image Y axis : %s" % self.FLIPY.get())
+        self.load_img()
+        return 
 
     def toggle_negative_stain(self):
         if self.NEGATIVE_STAIN.get() == True:
