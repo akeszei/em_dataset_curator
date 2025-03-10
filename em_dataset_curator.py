@@ -1701,7 +1701,7 @@ if __name__ == '__main__':
         'img_coords' : {},
         'img_dimensions' : (0,0),
         'img_box_size' : -1, ## box size of the particles in pixels of the loaded raw image
-        'mrc_dimensions': (4092, 4092),
+        'mrc_dimensions': (4096, 4096),
         'angpix' : 1.94, ## resolution of the .MRC pixel size
         'box_size' : 110, ## box size of the particles in Angstroms
         'RESIZE_IMG' : False,
