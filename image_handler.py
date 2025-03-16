@@ -245,21 +245,72 @@ def display_img(im_array, coords = None, box_size = 1):
 
     root.mainloop()
 
-def gaussian_disk(size):
-    """ Creates a soft gaussian grayscale image of given pixel size with values in range 0 -- 255
+def gaussian_disk(diameter, box_size, sigma = 1.5, hardness = 3, background_color = 255):
+    """ 
+    Creates a soft gaussian grayscale image of given pixel size with values in range 0 -- 255
+
+    ### PARAMETERS 
+    ```
+        diameter = int() # pixels diameter of the gaussian disk to create 
+        box_size = int() # total pixel size of the box to insert the guassian disk into 
+        hardness = float() # 1 is smoothest while higher values lead to harder edges 
+        sigma = float() # adjust the shape of the guassian by its sigma value, necessary to play with if a specific hardness and diameter are desired (raise this value as the hardness increases)
+        background_color = int(0-255) # grayscale value of the background 
+    ```
+
+    ### RETURNS  
+    ```
+        np.array of centered gaussian disk with shape equal to box size in range 0-255
+    ```
+
+    ### EXAMPLE
+    ```
+        from PIL import Image as PIL_Image
+        g = gaussian_disk(150, 300, background_color = 100)
+        img = PIL_Image.fromarray(g).convert('L')
+        img.show()
+    ```
     """
     import numpy as np
 
-    size = int(size)
+    if box_size < diameter:
+        print(" !! ERROR :: Cannot create a gaussian disk (%s px) larger than the given box size (%s px)" % (diameter, box_size))
+        return np.zeros((box_size, box_size))
+
+    ## generate the gaussian disk in a box the size of the taget diameter 
+    size = int(diameter)
     x, y = np.meshgrid(np.linspace(-1,1, size), np.linspace(-1,1, size))
     d = np.sqrt(x*x+y*y)
-    sigma, mu = 0.4, 0.0
+    sigma, mu = sigma, 0.0
     g = np.exp(-( (d-mu)**2 / ( 2.0 * sigma**2 ) ) )
-    ## invert color to we match to dark pixels
-    g = 1 - g
+    # ## invert color since we typically template match to dark pixels
+    # g = 1 - g
+    ## apply the hardness adjustment by increasing the total values of everything proprotionally 
+    g = g ** hardness 
+    ## normalize the gaussian to the range of a grayscale image 
+    g = g * 256
+    g = g.astype(int)
+    # # ## clip the values to the expected signal & background 
+    # g = np.clip(g, 255 - background_color, 255) 
 
-    g = g * 255
-    return g
+    ## prepare the larger box to place the gaussian disk into 
+    window = np.ones((box_size, box_size))
+    window = window * (255 - background_color)
+    ## calculate the offset needed to center the gaussian 
+    offset = int((window.shape[0] - g.shape[0])/2)
+    ## stamp the gaussian values into the window with the offset  
+    window[offset : offset + g.shape[0], offset : offset + g.shape[1]] = g
+
+    ## clip the values to the expected signal & background 
+    min_val = 255-background_color
+    if min_val < g.min():
+        min_val = g.min()
+    window = np.clip(window, min_val, 255) 
+    ## invert the colors as we expect to pick with black signal 
+    window = 255 - window
+    print(" window min max = ", window.min(), window.max())
+
+    return window
 
 def template_cross_correlate(im_array, template, threshold, DEBUG = False):
     """
@@ -423,23 +474,29 @@ if __name__ == "__main__":
     import sys, os
     from tkinter import *
 
+    from PIL import Image as PIL_Image
+    g = gaussian_disk(150, 300, background_color = 100)
+    img = PIL_Image.fromarray(g).convert('L')
+    img.show()
+
+
     ## allow functions of this script to be tested by supplying in an image on the commandline via:
     ##      $ image_handler.py  <img name>
-    fname = sys.argv[1]
+    # fname = sys.argv[1]
 
     ## edit the functions that run in this block to test proper execution
-    im = image2array(fname)
+    # im = image2array(fname)
 
     ## box_size and some coordinates for img B1g1...Exp_10.jpg
-    coords = [(444,138), (452, 124), (466, 117)]
-    box_size = 17
+    # coords = [(444,138), (452, 124), (466, 117)]
+    # box_size = 17
 
 
-    im = local_contrast(im, box_size)
+    # im = local_contrast(im, box_size)
     # im = sigma_contrast(im, 1.5)
     # im = auto_contrast(im)
 
-    im = gaussian_blur(im, 1)
+    # im = gaussian_blur(im, 1)
 
     # extracted_imgs = extract_boxes(im, box_size, coords, DEBUG = True)
     # min, max = find_intensity_range(extracted_imgs)
@@ -453,4 +510,4 @@ if __name__ == "__main__":
     # im_inverted = 255 - im ## local maxima uses 0 as background so we need particle peaks to be white
     # coords = find_local_maxima(im_inverted, box_size, DEBUG = True)
 
-    display_img(im, coords, box_size)
+    # display_img(im, coords, box_size)

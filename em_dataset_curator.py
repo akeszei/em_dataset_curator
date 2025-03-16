@@ -8,8 +8,10 @@
 
 """
 To Do:
+    - Add contrast from picks
     - Add the ability to hold Ctrl + arrow keys to shift the jpg coordinates by a few pixels in the corresponding direction?
     - For autopicking, add a way to generate a not-too-soft gaussian disk
+    - For templat picking add a min and max average range of signal expected? ie how to avoid picking on ice/carbon?
     - Add a toggle to use the threshold slider
     - Add a button to drop points below threshold (not displayed) ... might make obsolete the autopicker? 
     - Let the user define the display to show squares or circles and the stroke?
@@ -2019,17 +2021,21 @@ class AutopickPanel(MainUI):
         self.loaded_template_im_array = None
         self.loaded_template_displayObj = None
         self.canvas_size = 150 # px
-        self.picking_threshold = 0.3
-
+        self.picking_threshold = 0.1
+        self.gaussian_disk_diameter = int(self.mainUI.picks_diameter * 0.8)
 
         ## Define widgets
 
-        ## 1. buttons
+        ## 1. buttons area 
         self.generate_template_from_picks_button = tk.Button(self.panel, text="Template from picks", font = ('Helvetica', '9'), command = lambda: self.generate_template_from_picks(), width=18)
         self.load_template_button = tk.Button(self.panel, text="Load template", font = ('Helvetica', '10'), command = lambda: self.load_template(), width=10)
         self.save_template_button = tk.Button(self.panel, text="Save template", font = ('Helvetica', '10'), command = lambda: self.save_template(), width=10)
         self.autopick_button = tk.Button(self.panel, text="Autopick", font = ('Helvetica', '12'), command = lambda: self.submit_autopicker_job(), width=10)
         self.clear_coordinates_button = tk.Button(self.panel, text="Clear picks", font = ('Helvetica', '9'), command = lambda: self.clear_picked_coordinates(), width=10)
+        self.gaussian_disk_BUTTON = tk.Button(self.panel, text="Gaussian disk", font = ('Helvetica', '9'), command = lambda: self.create_gaussian_disk(), width=12)
+        self.gaussian_disk_diameter_ENTRY = tk.Entry(self.panel, width=10, font=("Helvetica", '9'), justify='right')
+        self.gaussian_disk_diameter_ENTRY.insert(tk.END, "%s" % self.gaussian_disk_diameter)
+
 
         ## 2. threshold slider
         self.threshold_label = tk.Label(self.panel, text = 'Picking threshold:', anchor = tk.S, font = ('Helvetica', '9'))
@@ -2061,12 +2067,17 @@ class AutopickPanel(MainUI):
         self.autopick_button.grid(column=1, row= 7, pady=10)
         self.clear_coordinates_button.grid(column=2, row=7, padx = 10, sticky=tk.W)
 
+        self.gaussian_disk_BUTTON.grid(column = 0, row = 8)
+        self.gaussian_disk_diameter_ENTRY.grid(column = 1, row = 8)
+        self.gaussian_disk_diameter_ENTRY.bind('<Return>', lambda event: self.create_gaussian_disk())
+        self.gaussian_disk_diameter_ENTRY.bind('<KP_Enter>', lambda event: self.create_gaussian_disk())
+
 
         ## Add some hotkeys for ease of use
         # self.panel.bind('<Left>', lambda event: self.cutoff_slider.set(self.cutoff_slider.get() - 1))
         # self.panel.bind('<Right>', lambda event: self.cutoff_slider.set(self.cutoff_slider.get() + 1))
-        self.panel.bind('<Return>', lambda event: self.submit_autopicker_job())
-        self.panel.bind('<KP_Enter>', lambda event: self.submit_autopicker_job()) # numpad 'Return' key
+        # self.panel.bind('<Return>', lambda event: self.submit_autopicker_job())
+        # self.panel.bind('<KP_Enter>', lambda event: self.submit_autopicker_job()) # numpad 'Return' key
 
         ## Set focus to the panel
         self.panel.focus()
@@ -2075,6 +2086,24 @@ class AutopickPanel(MainUI):
         self.panel.protocol("WM_DELETE_WINDOW", self.close)
 
         return
+
+    def create_gaussian_disk(self):
+        ## read the entry widget and update the value on the instance 
+        try:
+            diameter_ang = int(self.gaussian_disk_diameter_ENTRY.get())
+            self.gaussian_disk_diameter = diameter_ang
+        except:
+            self.gaussian_disk_diameter_ENTRY.delete(0, tk.END)
+            self.gaussian_disk_diameter_ENTRY.insert(0, "int")
+            return 
+        ## get the background color of the loaded image 
+        background_grayscale = np.average(self.mainUI.display_im_arrays[0])
+
+        print(" Generate a gaussian disk of %s Ang diameter" % diameter_ang)
+        disk = image_handler.gaussian_disk((self.gaussian_disk_diameter / self.mainUI.pixel_size), int(self.mainUI.picks_diameter / self.mainUI.pixel_size), background_color = background_grayscale)
+        self.loaded_template_im_array = disk 
+        self.display_template()
+        return 
 
     def close(self):
         ## unset the panel instance before destroying this instance
