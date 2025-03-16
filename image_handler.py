@@ -58,7 +58,7 @@ def auto_contrast(im_array, DEBUG = True):
         print("  stretch to new min, max = (%s %s)" % (minval, maxval))
         print("=======================================")
 
-    ## remove pixles above/below the defined limits
+    ## remove pixels above/below the defined limits
     im_array = np.clip(im_array, minval, maxval)
     ## rescale the image into the range 0 - 255
     im_array = ((im_array - minval) / (maxval - minval)) * 255
@@ -245,7 +245,7 @@ def display_img(im_array, coords = None, box_size = 1):
 
     root.mainloop()
 
-def gaussian_disk(diameter, box_size, sigma = 1.5, hardness = 3, background_color = 255):
+def gaussian_disk(diameter, box_size, sigma = 0.2, background_color = 255, disk_color = 0):
     """ 
     Creates a soft gaussian grayscale image of given pixel size with values in range 0 -- 255
 
@@ -266,7 +266,7 @@ def gaussian_disk(diameter, box_size, sigma = 1.5, hardness = 3, background_colo
     ### EXAMPLE
     ```
         from PIL import Image as PIL_Image
-        g = gaussian_disk(150, 300, background_color = 100)
+        g = gaussian_disk(150, 300, background_color = 100, disk_color = 70)
         img = PIL_Image.fromarray(g).convert('L')
         img.show()
     ```
@@ -283,15 +283,13 @@ def gaussian_disk(diameter, box_size, sigma = 1.5, hardness = 3, background_colo
     d = np.sqrt(x*x+y*y)
     sigma, mu = sigma, 0.0
     g = np.exp(-( (d-mu)**2 / ( 2.0 * sigma**2 ) ) )
-    # ## invert color since we typically template match to dark pixels
-    # g = 1 - g
-    ## apply the hardness adjustment by increasing the total values of everything proprotionally 
-    g = g ** hardness 
+    ## raise the gaussian up along the x-axis to get a larger disk with a sharper edge that is closer to the target diameter size 
+    g = g * 10000
+    ## clip the gaussian to match a proportional range for rescaling
+    g = np.clip(g, 0, 1) 
     ## normalize the gaussian to the range of a grayscale image 
     g = g * 256
     g = g.astype(int)
-    # # ## clip the values to the expected signal & background 
-    # g = np.clip(g, 255 - background_color, 255) 
 
     ## prepare the larger box to place the gaussian disk into 
     window = np.ones((box_size, box_size))
@@ -301,15 +299,16 @@ def gaussian_disk(diameter, box_size, sigma = 1.5, hardness = 3, background_colo
     ## stamp the gaussian values into the window with the offset  
     window[offset : offset + g.shape[0], offset : offset + g.shape[1]] = g
 
-    ## clip the values to the expected signal & background 
-    min_val = 255-background_color
-    if min_val < g.min():
-        min_val = g.min()
-    window = np.clip(window, min_val, 255) 
+    # ## clip the values to the expected signal & background 
+    min_val = 255 - background_color
+    max_val = 255 - disk_color
+    # if min_val < g.min():
+    #     min_val = g.min()
+    window = np.clip(window, min_val, max_val) 
     ## invert the colors as we expect to pick with black signal 
     window = 255 - window
-    print(" window min max = ", window.min(), window.max())
-
+    # print(" window min max = ", window.min(), window.max())
+    window = gaussian_blur(window, 3)
     return window
 
 def template_cross_correlate(im_array, template, threshold, DEBUG = False):
@@ -475,7 +474,7 @@ if __name__ == "__main__":
     from tkinter import *
 
     from PIL import Image as PIL_Image
-    g = gaussian_disk(150, 300, background_color = 100)
+    g = gaussian_disk(150, 200, background_color = 100, disk_color = 70)
     img = PIL_Image.fromarray(g).convert('L')
     img.show()
 

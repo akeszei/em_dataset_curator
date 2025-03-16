@@ -2021,7 +2021,7 @@ class AutopickPanel(MainUI):
         self.loaded_template_im_array = None
         self.loaded_template_displayObj = None
         self.canvas_size = 150 # px
-        self.picking_threshold = 0.1
+        self.picking_threshold = 0.01
         self.gaussian_disk_diameter = int(self.mainUI.picks_diameter * 0.8)
 
         ## Define widgets
@@ -2096,11 +2096,15 @@ class AutopickPanel(MainUI):
             self.gaussian_disk_diameter_ENTRY.delete(0, tk.END)
             self.gaussian_disk_diameter_ENTRY.insert(0, "int")
             return 
-        ## get the background color of the loaded image 
-        background_grayscale = np.average(self.mainUI.display_im_arrays[0])
+        ## get the signal range based on the display image values at the first and last quarter of the loaded image  
+        background_grayscale = np.percentile(self.mainUI.display_im_arrays[0], 75) 
+        particle_grayscale = np.percentile(self.mainUI.display_im_arrays[0], 25)
 
-        print(" Generate a gaussian disk of %s Ang diameter" % diameter_ang)
-        disk = image_handler.gaussian_disk((self.gaussian_disk_diameter / self.mainUI.pixel_size), int(self.mainUI.picks_diameter / self.mainUI.pixel_size), background_color = background_grayscale)
+        print(" Generate a gaussian disk of %s Ang diameter (background grayscale = %s)" % (diameter_ang, background_grayscale))
+        display_angpix = get_scale_factor(self.mainUI.mrc_dimensions, self.mainUI.jpg_dimensions) * self.mainUI.pixel_size / self.mainUI.scale_factor
+        # rescaled_box_size = int(self.mainUI.picks_diameter * 1.2  / display_angpix) # add some padding around the particle 
+
+        disk = image_handler.gaussian_disk(int(self.gaussian_disk_diameter / display_angpix), int(self.mainUI.picks_diameter / display_angpix), background_color = background_grayscale)
         self.loaded_template_im_array = disk 
         self.display_template()
         return 
