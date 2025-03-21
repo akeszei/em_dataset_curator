@@ -1600,7 +1600,7 @@ class MainUI:
         dropdown_functions.add_command(label="Local contrast & Blur (Ctrl + C)", command=self.local_contrast_and_blur)
         dropdown_functions.add_command(label="Auto-contrast", command=self.auto_contrast)
         # dropdown_functions.add_command(label="Contrast from selection", command=self.contrast_by_selected_particles)
-        dropdown_functions.add_command(label="Reset img", command=lambda: self.load_img(self.image_name))
+        dropdown_functions.add_command(label="Reset img", command=lambda: self.load_img(self.image_name, "reset"))
 
         return
 
@@ -1972,8 +1972,16 @@ class MainUI:
 
     #region :: IMAGE PROCESSING FUNCTIONS 
     def local_contrast_and_blur(self):
-        self.local_contrast()
-        self.gaussian_blur()
+        ## get the image array from buffer 
+        display_im_array = self.display_im_arrays[0]
+        im = image_handler.local_contrast(display_im_array, self.picks_diameter, DEBUG = DEBUG)
+        im = image_handler.gaussian_blur(im, 1.5)
+
+        ## get the updated array and pass it to the load_img function 
+        self.load_img(self.image_name, input_im_array=im)
+
+        # self.local_contrast()
+        # self.gaussian_blur()
         return 
 
     def local_contrast(self):
