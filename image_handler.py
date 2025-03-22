@@ -23,6 +23,11 @@ def local_contrast(im_array, box_size, DEBUG = False):
     except:
         print(" ERROR :: scikit-image not installed, try:")
         print("     pip install scikit-image")
+        print("   .. alternatively you may have an old version installed (<0.20.0), check via IDLE with:")
+        print("     >>> import skimage as ski")
+        print("     >>> ski.__version__")
+        print("   .. if so, upgrade via pip:")
+        print("     $ pip install --upgrade scikit-image==0.20.0")
         return
 
     ## ensure the input array is writable 
