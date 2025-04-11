@@ -8,6 +8,8 @@
 
 """
 To Do:
+    - Add ability to flip displayed image 
+    - Update the settings file to remember if user has filament mode on, flip image on, etc...
     - Add contrast from picks
     - Add the ability to hold Ctrl + arrow keys to shift the jpg coordinates by a few pixels in the corresponding direction?
     - For autopicking, add a way to generate a not-too-soft gaussian disk
