@@ -419,6 +419,7 @@ class MainUI:
         self.USE_MRC = tk.BooleanVar(instance, False) # option to switch between .jpg and .mrc
         self.USE_THRESHOLD = tk.BooleanVar(instance, False) # option to use the threshold slider or not
         self.particles_file_save_name = 'particles.txt'
+        self.IS_FILAMENTS = tk.BooleanVar(instance, False)
         #endregion
 
         ## MENU BAR LAYOUT
@@ -491,16 +492,20 @@ class MainUI:
         self.particle_diameter_pixels_LABEL = tk.Label(instance, font=("Helvetica", right_side_panel_fontsize), text="%s px" % '?')
         self.particle_diameter_pixels_LABEL.grid(row = 17, column = 1, columnspan = 2, sticky = (tk.N))
 
+
+        self.is_filaments_TOGGLE = tk.Checkbutton(instance, text='Filament mode', variable=self.IS_FILAMENTS, onvalue=True, offvalue=False, command=self.draw_image_coordinates)
+        self.is_filaments_TOGGLE.grid(row = 18, column = 1, columnspan = 2, sticky = (tk.N, tk.W))
+
         # self.suggested_angpix_LABEL = tk.Label(instance, font=("Helvetica", right_side_panel_fontsize), text="Crop to: %s Å/px" % '?')
         # self.suggested_angpix_LABEL.grid(row = 19, column = 1, columnspan = 2, sticky = (tk.N))
 
         self.threshold_LABEL = tk.Label(instance, font=("Helvetica", right_side_panel_fontsize), text="Threshold: %s" % self.picks_threshold)
         self.threshold_SLIDER = tk.Scale(instance, font=("Helvetica", right_side_panel_fontsize), from_=0, to=100, resolution=0.1, showvalue =0, tickinterval=0, orient=tk.HORIZONTAL, sliderlength = 20, length = 105, width = 10, command=self.on_slider_change)
-        self.threshold_LABEL.grid(row = 18, column = 1, sticky = (tk.S)) #, tk.CENTER))
-        self.threshold_SLIDER.grid(row = 19, column = 1,  columnspan = 2) #, sticky = (tk.N, tk.E))
+        self.threshold_LABEL.grid(row = 19, column = 1, sticky = (tk.S)) #, tk.CENTER))
+        self.threshold_SLIDER.grid(row = 20, column = 1,  columnspan = 2) #, sticky = (tk.N, tk.E))
 
         self.apply_threshold_BUTTON = tk.Button(instance, text="Apply", font = ('Helvetica', '8'), command = lambda: self.apply_threshold(), width=7)
-        self.apply_threshold_BUTTON.grid(row = 20, column = 1, columnspan = 2)
+        self.apply_threshold_BUTTON.grid(row = 21, column = 1, columnspan = 2)
 
         #endregion 
 
@@ -528,7 +533,8 @@ class MainUI:
         self.instance.bind("<F1>", lambda event: self.debugging())
         self.instance.bind('<Control-s>', lambda event: self.write_marked()) # Ctrl + S
         # self.instance.bind('<Control-S>', lambda event: self.write_particles_file(QUERY = False)) # Ctrl + Shift + S
-        self.instance.bind('<F5>', lambda event: self.write_particles_file(QUERY = False)) 
+        # self.instance.bind('<F5>', lambda event: self.write_particles_file(QUERY = False))
+        self.instance.bind('<F5>', lambda event: self.write_marked()) 
         self.instance.bind('<Control-c>', lambda event: self.local_contrast_and_blur())
         self.instance.bind('<Control-x>', lambda event: self.open_panel("AutopickPanel"))
         canvas = self.displayed_widgets[0]
@@ -1024,9 +1030,7 @@ class MainUI:
         counter = 0
         skipped = 0 
         for coordinate in image_coordinates:
-            score = coordinate[2]
-            threshold = self.picks_threshold # WIP
-            if score >= threshold:
+            if self.IS_FILAMENTS.get() == True:
                 counter += 1
                 ## each coordinate is the center of a box, thus we need to offset by half the img_box_width pixel length to get the bottom left and top right of the rectangle
                 x0 = int(coordinate[0] * self.scale_factor) - box_halfwidth
@@ -1035,8 +1039,26 @@ class MainUI:
                 y1 = int(coordinate[1] * self.scale_factor) + box_halfwidth #y0 - img_box_size # invert direction of box to take into account x0,y0 are at bottom left, not top left
                 # self.canvas.create_rectangle(x0, y0, x1, y1, outline='red', width=1, tags='particle_positions')
                 canvas.create_oval(x0, y0, x1, y1, outline=self.picks_color, width=2, tags='particle_positions')
+                if counter % 2 == 1:
+                    ## load the coordinate into memory in case we need to draw a line
+                    old_point = (coordinate[0] * self.scale_factor, coordinate[1] * self.scale_factor)
+                elif counter % 2 == 0:
+                    canvas.create_line(old_point[0], old_point[1], coordinate[0] * self.scale_factor, coordinate[1] * self.scale_factor, fill=self.picks_color, width=2, tags='particle_positions')
+                    
             else:
-                skipped += 1
+                score = coordinate[2]
+                threshold = self.picks_threshold # WIP
+                if score >= threshold:
+                    counter += 1
+                    ## each coordinate is the center of a box, thus we need to offset by half the img_box_width pixel length to get the bottom left and top right of the rectangle
+                    x0 = int(coordinate[0] * self.scale_factor) - box_halfwidth
+                    y0 = int(coordinate[1] * self.scale_factor) - box_halfwidth
+                    x1 = int(coordinate[0] * self.scale_factor) + box_halfwidth
+                    y1 = int(coordinate[1] * self.scale_factor) + box_halfwidth #y0 - img_box_size # invert direction of box to take into account x0,y0 are at bottom left, not top left
+                    # self.canvas.create_rectangle(x0, y0, x1, y1, outline='red', width=1, tags='particle_positions')
+                    canvas.create_oval(x0, y0, x1, y1, outline=self.picks_color, width=2, tags='particle_positions')
+                else:
+                    skipped += 1
         
         print(" %s particles drawn (%s skipped)" % (counter, skipped))
         return
@@ -1108,7 +1130,22 @@ class MainUI:
                 if rescaled_y - box_halfwidth <= mouse_position[1] <= rescaled_y + box_halfwidth:
                     ## if both x and y-positions are in range, we have a clash
                     if REMOVE:
-                        del self.coordinates[coord] # remove the coordinate that clashed based on its index position 
+                        if self.IS_FILAMENTS.get():
+                            # ## generate a list of coordinates from the keys of the dictionary 
+                            # image_coordinates = []
+                            # for coord in self.coordinates:
+                            #     image_coordinates.append(coord)
+
+                            # ## in filament mode we need to be careful how to handle the removal of a point
+                            # ## get the index of the point 
+                            # image_coordinates.index()
+                            # ## for even indexes we have the starting point 
+
+                            # ## for odd indexes we have the end point 
+                            del self.coordinates[coord] # remove the coordinate that clashed based on its index position 
+
+                        else:
+                            del self.coordinates[coord] # remove the coordinate that clashed based on its index position 
                     return True # for speed, do not check further coordinates (may have to click multiple times for severe overlaps)
             i += 1
         return False
@@ -1585,7 +1622,7 @@ class MainUI:
         menubar.add_cascade(label="File", menu = dropdown_file)
         # dropdown_file.add_command(label="Open .mrc", command=self.load_file)
         dropdown_file.add_command(label="Open marked imgs file", command=self.load_marked_filelist)
-        dropdown_file.add_command(label="Save marked imgs (Ctrl + S)", command=self.write_particles_file)
+        dropdown_file.add_command(label="Save marked imgs (Ctrl + S)", command=self.write_marked)
         # dropdown_file.add_command(label="Quick save particles (Ctrl + Shift + S, or F5)", command=self.write_particles_file)
         dropdown_file.add_command(label="Exit", command=self.quit)
 
@@ -1739,53 +1776,53 @@ class MainUI:
             canvas.config(width=x - 1, height=y - 1)
         return
 
-    def write_particles_file(self, QUERY = True):
-        """
-            Obsolete for this program, replaced by -> def save_starfile(self):
-        """
-        if QUERY:
-            ## arrange the filetypes to match the expected one
-            expected_extension = os.path.splitext(self.particles_file_save_name)[1]
-            if expected_extension.lower() == ".coord":
-                filetypes = [("Coordinate","*.coord"),("Text","*.txt"),("All Files","*.*")]
-            elif expected_extension.lower() == ".txt":
-                filetypes = [("Text","*.txt"),("Coordinate","*.coord"),("All Files","*.*")]
-            else: 
-                filetypes = [("Text","*.txt"),("Coordinate","*.coord"),("All Files","*.*")]
+    # def write_particles_file(self, QUERY = True):
+    #     """
+    #         Obsolete for this program, replaced by -> def save_starfile(self):
+    #     """
+    #     if QUERY:
+    #         ## arrange the filetypes to match the expected one
+    #         expected_extension = os.path.splitext(self.particles_file_save_name)[1]
+    #         if expected_extension.lower() == ".coord":
+    #             filetypes = [("Coordinate","*.coord"),("Text","*.txt"),("All Files","*.*")]
+    #         elif expected_extension.lower() == ".txt":
+    #             filetypes = [("Text","*.txt"),("Coordinate","*.coord"),("All Files","*.*")]
+    #         else: 
+    #             filetypes = [("Text","*.txt"),("Coordinate","*.coord"),("All Files","*.*")]
 
-            save_path = asksaveasfilename(parent = self.instance, initialfile = "%s" % self.particles_file_save_name, 
-                                            defaultextension="%s" % expected_extension,
-                                            filetypes=filetypes)
-        else:
-            ## save the file with current loaded defaults
-            save_path = os.path.join(self.working_dir, self.particles_file_save_name)
-            print(" Quick saving file: %s" % save_path)
+    #         save_path = asksaveasfilename(parent = self.instance, initialfile = "%s" % self.particles_file_save_name, 
+    #                                         defaultextension="%s" % expected_extension,
+    #                                         filetypes=filetypes)
+    #     else:
+    #         ## save the file with current loaded defaults
+    #         save_path = os.path.join(self.working_dir, self.particles_file_save_name)
+    #         print(" Quick saving file: %s" % save_path)
 
-        if len(save_path) <= 0:
-            return 
+    #     if len(save_path) <= 0:
+    #         return 
         
-        ## update the instance to take in the new save name into its meta data
-        save_dir, save_name = os.path.split(str(save_path))
-        self.particles_file_save_name = save_name
+    #     ## update the instance to take in the new save name into its meta data
+    #     save_dir, save_name = os.path.split(str(save_path))
+    #     self.particles_file_save_name = save_name
 
-        ## add a prompt window if file already exists
-        # if os.path.isfile(save_path):
-        #     answer = askyesno('Warning', 'Overwrite existing particle coordinates file?')
-        #     if answer == False:
-        #         return 
+    #     ## add a prompt window if file already exists
+    #     # if os.path.isfile(save_path):
+    #     #     answer = askyesno('Warning', 'Overwrite existing particle coordinates file?')
+    #     #     if answer == False:
+    #     #         return 
 
-        ## initialize the file with the header before appending particles 
-        with open(save_path, 'w') as f : # NOTE: 'w' == overwrite existing file; 'a' appends to file
-            f.write("%s\t%s\t%s\t%s\n" % ('image_name', 'x_coord', 'y_coord', 'score'))
+    #     ## initialize the file with the header before appending particles 
+    #     with open(save_path, 'w') as f : # NOTE: 'w' == overwrite existing file; 'a' appends to file
+    #         f.write("%s\t%s\t%s\t%s\n" % ('image_name', 'x_coord', 'y_coord', 'score'))
 
-        counter = 0
-        with open(save_path, 'a') as f : 
-            for img in self.coordinates:
-                for Xcoord, Ycoord, score in self.coordinates[img]:
-                    f.write("%s\t%s\t%s\t%s\n" % (img, Xcoord, Ycoord, score))
-                    counter += 1
-        print(" Wrote %s particles to: %s" % (counter, save_path))
-        return 
+    #     counter = 0
+    #     with open(save_path, 'a') as f : 
+    #         for img in self.coordinates:
+    #             for Xcoord, Ycoord, score in self.coordinates[img]:
+    #                 f.write("%s\t%s\t%s\t%s\n" % (img, Xcoord, Ycoord, score))
+    #                 counter += 1
+    #     print(" Wrote %s particles to: %s" % (counter, save_path))
+    #     return 
 
     def save_starfile(self):
         ## unpack the global variables for readability
