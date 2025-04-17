@@ -422,6 +422,8 @@ class MainUI:
         self.USE_THRESHOLD = tk.BooleanVar(instance, False) # option to use the threshold slider or not
         self.particles_file_save_name = 'particles.txt'
         self.IS_FILAMENTS = tk.BooleanVar(instance, False)
+        self.FLIPY = tk.BooleanVar(instance, False)
+
         #endregion
 
         ## MENU BAR LAYOUT
@@ -498,16 +500,19 @@ class MainUI:
         self.is_filaments_TOGGLE = tk.Checkbutton(instance, text='Filament mode', variable=self.IS_FILAMENTS, onvalue=True, offvalue=False, command=self.draw_image_coordinates)
         self.is_filaments_TOGGLE.grid(row = 18, column = 1, columnspan = 2, sticky = (tk.N, tk.W))
 
+        self.flipY_TOGGLE = tk.Checkbutton(instance, text='Flip Y', variable=self.FLIPY, onvalue=True, offvalue=False, command=self.toggle_flipY)
+        self.flipY_TOGGLE.grid(row = 19, column = 1, columnspan = 2, sticky = (tk.N, tk.W))
+
         # self.suggested_angpix_LABEL = tk.Label(instance, font=("Helvetica", right_side_panel_fontsize), text="Crop to: %s Å/px" % '?')
         # self.suggested_angpix_LABEL.grid(row = 19, column = 1, columnspan = 2, sticky = (tk.N))
 
         self.threshold_LABEL = tk.Label(instance, font=("Helvetica", right_side_panel_fontsize), text="Threshold: %s" % self.picks_threshold)
         self.threshold_SLIDER = tk.Scale(instance, font=("Helvetica", right_side_panel_fontsize), from_=0, to=100, resolution=0.1, showvalue =0, tickinterval=0, orient=tk.HORIZONTAL, sliderlength = 20, length = 105, width = 10, command=self.on_slider_change)
-        self.threshold_LABEL.grid(row = 19, column = 1, sticky = (tk.S)) #, tk.CENTER))
-        self.threshold_SLIDER.grid(row = 20, column = 1,  columnspan = 2) #, sticky = (tk.N, tk.E))
+        self.threshold_LABEL.grid(row = 20, column = 1, sticky = (tk.S)) #, tk.CENTER))
+        self.threshold_SLIDER.grid(row = 21, column = 1,  columnspan = 2) #, sticky = (tk.N, tk.E))
 
         self.apply_threshold_BUTTON = tk.Button(instance, text="Apply", font = ('Helvetica', '8'), command = lambda: self.apply_threshold(), width=7)
-        self.apply_threshold_BUTTON.grid(row = 21, column = 1, columnspan = 2)
+        self.apply_threshold_BUTTON.grid(row = 22, column = 1, columnspan = 2)
 
         #endregion 
 
@@ -1259,6 +1264,12 @@ class MainUI:
 
         return
 
+    def toggle_flipY(self):
+        print(" Flip image Y axis : %s" % self.FLIPY.get())
+        self.load_img(self.image_name)
+        return 
+
+
     def pick_diameter_updated(self):
         user_input = self.picks_diameter_ENTRY.get().strip()
         ## cast the input to an integer value
@@ -1434,6 +1445,10 @@ class MainUI:
                     self.update_jpg_to_mrc_ratio()
                     im = im.resize(new_dimensions)
                     im = im.convert('L') ## make grayscale
+
+                    if self.FLIPY.get() == True:
+                        im = im.transpose(PIL_Image.FLIP_TOP_BOTTOM) ## flip image 
+
                     # im = im.convert('RGB') ## make RGB ;; note that local contrast function does not work on RGB images atm   
                     img_array = np.asarray(im)
                     img_contrasted = sigma_contrast(img_array, self.sigma_contrast)
