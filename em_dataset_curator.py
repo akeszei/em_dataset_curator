@@ -1436,6 +1436,7 @@ class MainUI:
 
                 self.mrc_dimensions = (mrc_im_array.shape[1], mrc_im_array.shape[0])
             else:
+                print(" OPEN IMAGE: ", fname)
                 with PIL_Image.open(fname) as im:
                     
                     new_dimensions = get_resized_dimensions(100 * self.scale_factor, im.size)
