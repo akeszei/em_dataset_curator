@@ -8,7 +8,6 @@
 
 """
 To Do:
-    - Add ability to flip displayed image 
     - Update the settings file to remember if user has filament mode on, flip image on, etc...
     - Add contrast from picks
     - Add the ability to hold Ctrl + arrow keys to shift the jpg coordinates by a few pixels in the corresponding direction?
@@ -423,6 +422,11 @@ class MainUI:
         self.particles_file_save_name = 'particles.txt'
         self.IS_FILAMENTS = tk.BooleanVar(instance, False)
         self.FLIPY = tk.BooleanVar(instance, False)
+        self.SHOW_ALT_PICKS = tk.BooleanVar(instance, False) ## toggle for when alternate picks are loaded
+        self.alt_coordinates = dict() ## dictionary to hold alternate picks if loaded 
+        self.alt_coords_dir = "."
+        self.alt_picks_color = 'blue'
+        self.alt_picks_diameter = 150 ## Angstroms 
 
         #endregion
 
@@ -516,6 +520,22 @@ class MainUI:
 
         #endregion 
 
+        # region :: ALTERNATE PICKS PANEL
+        self.separator3 = ttk.Separator(instance, orient='horizontal')
+        self.separator3.grid(row=23, column =1, columnspan = 2, sticky=tk.EW)
+
+        self.show_alt_picks_TOGGLE = tk.Checkbutton(instance, text='Show alt picks', variable=self.SHOW_ALT_PICKS, onvalue=True, offvalue=False, command=self.toggle_SHOW_ALT_PICKS)
+        self.show_alt_picks_TOGGLE.grid(row = 24, column = 1, columnspan = 2, sticky = (tk.N, tk.W))
+
+        self.alt_picks_diameter_LABEL = tk.Label(instance, font=("Helvetica", right_side_panel_fontsize), text="Alt Dia. (Å): ")
+        self.alt_picks_diameter_ENTRY = tk.Entry(instance, width=4, font=("Helvetica", right_side_panel_fontsize))
+        self.alt_picks_diameter_LABEL.grid(row = 25, column = 1, sticky = (tk.N, tk.E))
+        self.alt_picks_diameter_ENTRY.grid(row = 25, column = 2, sticky = (tk.N, tk.W))
+
+        #endregion 
+
+
+
         #endregion
         ################################################
 
@@ -585,6 +605,10 @@ class MainUI:
         self.picks_diameter_ENTRY.bind('<Control-KeyRelease-a>', lambda event: self.select_all(self.picks_diameter_ENTRY))
         self.picks_diameter_ENTRY.bind('<Return>', lambda event: self.pick_diameter_updated())
         self.picks_diameter_ENTRY.bind('<KP_Enter>', lambda event: self.pick_diameter_updated())
+        self.alt_picks_diameter_ENTRY.bind('<Control-KeyRelease-a>', lambda event: self.select_all(self.alt_picks_diameter_ENTRY))
+        self.alt_picks_diameter_ENTRY.bind('<Return>', lambda event: self.pick_diameter_updated())
+        self.alt_picks_diameter_ENTRY.bind('<KP_Enter>', lambda event: self.pick_diameter_updated())
+
         # self.scalebar_length_ENTRY.bind('<Control-KeyRelease-a>', lambda event: self.select_all(self.scalebar_length_ENTRY))
         # self.scalebar_length_ENTRY.bind('<Return>', lambda event: self.scalebar_updated())
         # self.scalebar_length_ENTRY.bind('<KP_Enter>', lambda event: self.scalebar_updated())
@@ -1068,6 +1092,55 @@ class MainUI:
                     skipped += 1
         
         print(" %s particles drawn (%s skipped)" % (counter, skipped))
+
+        ## run same function but for alternatively loaded picks 
+        if self.SHOW_ALT_PICKS.get():
+            ## generate a list of alt coordinates from the keys of the dictionary 
+            alt_image_coordinates = []
+            for coord in self.alt_coordinates:
+                alt_image_coordinates.append(coord)
+
+            ## box_size is a value given in Angstroms, we need to convert it to pixels
+            display_angpix = get_scale_factor(self.mrc_dimensions, self.jpg_dimensions) * self.pixel_size / self.scale_factor
+            box_width = self.alt_picks_diameter / display_angpix
+            box_halfwidth = int(box_width / 2)
+
+            counter = 0
+            skipped = 0 
+            for coordinate in alt_image_coordinates:
+                if self.IS_FILAMENTS.get() == True:
+                    counter += 1
+                    ## each coordinate is the center of a box, thus we need to offset by half the img_box_width pixel length to get the bottom left and top right of the rectangle
+                    x0 = int(coordinate[0] * self.scale_factor) - box_halfwidth
+                    y0 = int(coordinate[1] * self.scale_factor) - box_halfwidth
+                    x1 = int(coordinate[0] * self.scale_factor) + box_halfwidth
+                    y1 = int(coordinate[1] * self.scale_factor) + box_halfwidth #y0 - img_box_size # invert direction of box to take into account x0,y0 are at bottom left, not top left
+                    # self.canvas.create_rectangle(x0, y0, x1, y1, outline='red', width=1, tags='particle_positions')
+                    canvas.create_oval(x0, y0, x1, y1, outline=self.alt_picks_color, width=2, tags='particle_positions')
+                    if counter % 2 == 1:
+                        ## load the coordinate into memory in case we need to draw a line
+                        old_point = (coordinate[0] * self.scale_factor, coordinate[1] * self.scale_factor)
+                    elif counter % 2 == 0:
+                        canvas.create_line(old_point[0], old_point[1], coordinate[0] * self.scale_factor, coordinate[1] * self.scale_factor, fill=self.alt_picks_color, width=2, tags='particle_positions')
+                        
+                else:
+                    score = coordinate[2]
+                    threshold = self.picks_threshold # WIP
+                    if score >= threshold:
+                        counter += 1
+                        ## each coordinate is the center of a box, thus we need to offset by half the img_box_width pixel length to get the bottom left and top right of the rectangle
+                        x0 = int(coordinate[0] * self.scale_factor) - box_halfwidth
+                        y0 = int(coordinate[1] * self.scale_factor) - box_halfwidth
+                        x1 = int(coordinate[0] * self.scale_factor) + box_halfwidth
+                        y1 = int(coordinate[1] * self.scale_factor) + box_halfwidth #y0 - img_box_size # invert direction of box to take into account x0,y0 are at bottom left, not top left
+                        # self.canvas.create_rectangle(x0, y0, x1, y1, outline='red', width=1, tags='particle_positions')
+                        canvas.create_oval(x0, y0, x1, y1, outline=self.alt_picks_color, width=2, tags='particle_positions')
+                    else:
+                        skipped += 1
+            
+            print(" %s alt particles drawn (%s skipped)" % (counter, skipped))
+
+
         return
 
     def on_left_mouse_down(self, x, y):
@@ -1251,7 +1324,7 @@ class MainUI:
         return
 
     def toggle_SHOW_PICKS(self):
-        """
+        """ A pass-through function to redraw the screen on clicking the bool variable 
         """
         if self.SHOW_PICKS.get() == True:
             if DEBUG: print(" Display picked coordinates")
@@ -1264,11 +1337,24 @@ class MainUI:
 
         return
 
+    def toggle_SHOW_ALT_PICKS(self):
+        """ A pass-through function to redraw the screen on clicking the bool variable 
+        """
+        if self.SHOW_ALT_PICKS.get() == True:
+            if DEBUG: print(" Display alt picked coordinates")
+            ## WIP update the display window
+        else:
+            if DEBUG: print(" Hide alt picked coordinates")
+            ## WIP reload the regular image
+        ## draw image coordinates if necessary
+        self.draw_image_coordinates()
+
+        return 
+
     def toggle_flipY(self):
         print(" Flip image Y axis : %s" % self.FLIPY.get())
         self.load_img(self.image_name)
         return 
-
 
     def pick_diameter_updated(self):
         user_input = self.picks_diameter_ENTRY.get().strip()
@@ -1294,6 +1380,31 @@ class MainUI:
             self.picks_diameter_ENTRY.delete(0, tk.END)
             self.picks_diameter_ENTRY.insert(0,self.picks_diameter)
             print(" Input requires positive integer values")
+
+        ### re-run whole function for the alt diameter widget 
+        user_input_alt = self.alt_picks_diameter_ENTRY.get().strip()
+        ## cast the input to an integer value
+        try:
+            user_input_alt = int(user_input_alt)
+        except:
+            self.alt_picks_diameter_ENTRY.delete(0, tk.END)
+            self.alt_picks_diameter_ENTRY.insert(0,self.alt_picks_diameter)
+            print(" Input requires integer values > 0")
+        ## check if input is in range
+        if user_input_alt >= 0:
+            if DEBUG: print("alt particle pick diameter updated: %s" % user_input_alt )
+            self.alt_picks_diameter = user_input_alt
+            ## update the display widget that converts this number into pixels 
+            pixel_length = int(self.alt_picks_diameter / self.pixel_size)
+            ## pass focus back to the main instance
+            self.instance.focus()
+            self.draw_image_coordinates()
+        else:
+            self.alt_picks_diameter_ENTRY.delete(0, tk.END)
+            self.alt_picks_diameter_ENTRY.insert(0,self.picks_diameter)
+            print(" Input requires positive integer values")
+
+
         return
 
     def sigma_updated(self):
@@ -1491,6 +1602,7 @@ class MainUI:
             if len(self.coordinates) == 0: ## avoid overwriting an existing image_coordinates dictionary if it is already present
                 counter = 0
                 star_coordinate_file = ""
+                alt_star_coordinate_file = ""
                 ## to find matching files we need precise names to look for, set them up here:
                 img_basename = os.path.splitext(self.image_name)[0]
                 match_file1 = img_basename + ".star"
@@ -1509,9 +1621,29 @@ class MainUI:
                         if star_coordinate_file[-13:] == "_CURATED.star": break
                 ## if a star file is found, load its coordinates
                 # print(" STAR FILE USED FOR COORDS = ", star_coordinate_file)
+
+                ## if a matching star coordinate file was found, use it to read in the coordinates 
                 if (star_coordinate_file != ""):
                     self.coordinates = read_coords_from_star(star_coordinate_file, get_scale_factor(self.mrc_dimensions, self.jpg_dimensions))
 
+            if (self.SHOW_ALT_PICKS.get()):
+                ## default is same directory as cwd, use that as the null case 
+                if self.alt_coords_dir != ".":
+                    print(" TEST2 , are we entering this loop? ")
+                    ## use the assigned directory to find a matching star file 
+                    for fname in os.listdir(self.alt_coords_dir): ## iterate over the directory
+                        if fname == match_file1 or fname == match_file2 or fname == match_file3:
+
+                            counter += 1
+                            alt_star_coordinate_file = fname
+                            if counter > 1: print(">>> WARNING: Multiple .STAR files found for this image (e.g. multiple files match: " + img_basename + "*.star)")
+                            ## This program writes out ..._CURATED.star files, if we find one - use that over all other available .STAR files
+                            if alt_star_coordinate_file[-13:] == "_CURATED.star": break
+                print(" TEST :: alt_star_coordinate_file = ", alt_star_coordinate_file)
+
+                ## if a matching star coordinate file was found, use it to read in the coordinates 
+                if (alt_star_coordinate_file != ""):
+                    self.alt_coordinates = read_coords_from_star(alt_star_coordinate_file, get_scale_factor(self.mrc_dimensions, self.jpg_dimensions))
 
         ## draw image coordinates if necessary
         self.draw_image_coordinates()
@@ -1642,6 +1774,7 @@ class MainUI:
         dropdown_file.add_command(label="Open marked imgs file", command=self.load_marked_filelist)
         dropdown_file.add_command(label="Save marked imgs (Ctrl + S)", command=self.write_marked)
         # dropdown_file.add_command(label="Quick save particles (Ctrl + Shift + S, or F5)", command=self.write_particles_file)
+        dropdown_file.add_command(label="Load alternate coords", command=self.load_alternate_coords)
         dropdown_file.add_command(label="Exit", command=self.quit)
 
         ## dropdown menu --> Image processing functions 
@@ -1658,6 +1791,37 @@ class MainUI:
         dropdown_functions.add_command(label="Reset img", command=lambda: self.load_img(self.image_name, "reset"))
 
         return
+
+    def load_alternate_coords(self):
+        print(" Load alternative coordinates on image")
+
+        ## for reference, here are instance variables related to this function 
+        # self.SHOW_ALT_PICKS = tk.BooleanVar(instance, False) ## toggle for when alternate picks are loaded
+        # self.alt_coordinates = dict() ## dictionary to hold alternate picks if loaded 
+
+        # See: https://stackoverflow.com/questions/9239514/filedialog-tkinter-and-opening-files
+        folder_path = askdirectory(parent=self.instance, initialdir=".", title='Select directory')
+        if folder_path:
+            # extract file information from selection
+            # file_dir, file_name = os.path.split(str(file_w_path))
+            print("Folder selected: ", folder_path)
+            self.alt_coords_dir = folder_path
+            self.SHOW_ALT_PICKS.set(True)
+            ## initially set the alt picks to the same diameter as the one currently loaded on the instance 
+            self.alt_picks_diameter = self.picks_diameter
+            ## update the visual element in the input widget to reflect this diameter 
+            self.alt_picks_diameter_ENTRY.delete(0, tk.END)
+            self.alt_picks_diameter_ENTRY.insert(0,self.alt_picks_diameter)
+
+            # self.coordinates = read_coords_from_star(star_coordinate_file, get_scale_factor(self.mrc_dimensions, self.jpg_dimensions))
+            self.load_img(self.image_name)
+
+            # except:
+            #     showerror("Open Directory", "Failed to read \n'%s'" % folder_path)
+
+
+
+        return 
 
     def reset_coordinates_as_new(self):
         """
@@ -2287,7 +2451,7 @@ if __name__ == '__main__':
     from operator import itemgetter
     import sys
     import tkinter as tk
-    from tkinter.filedialog import askopenfilename, asksaveasfilename
+    from tkinter.filedialog import askopenfilename, asksaveasfilename, askdirectory
     from tkinter.messagebox import showerror, askyesno
     from tkinter import ttk
     import numpy as np
