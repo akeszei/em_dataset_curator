@@ -556,7 +556,7 @@ class MainUI:
         ## EVENT BINDING
         instance.bind("<Configure>", self.resize) ## Bind manual screen size adjustment to updating the scrollable area
 
-        #region :: KEYBINDINGS
+        #region :: KEYBINDINGS / HOTKEYS
         self.instance.bind("<F1>", lambda event: self.debugging())
         self.instance.bind('<Control-s>', lambda event: self.write_marked()) # Ctrl + S
         # self.instance.bind('<Control-S>', lambda event: self.write_particles_file(QUERY = False)) # Ctrl + Shift + S
@@ -580,6 +580,8 @@ class MainUI:
         self.instance.bind('<x>', lambda event: self.next_img('right'))
         # self.instance.bind('<c>', lambda event: self.toggle_SHOW_CTF()) ## will need to set the toggle
         self.instance.bind('<d>', lambda event: self.mark_img())
+        self.instance.bind('<f>', lambda event: self.toggle_filament_mode())
+
 
         self.image_name_label.bind('<Control-KeyRelease-a>', lambda event: self.select_all(self.image_name_label))
         # self.image_name_label.bind('<Return>', lambda event: self.image_name_updated())
@@ -1323,6 +1325,17 @@ class MainUI:
 
         return
 
+    def toggle_filament_mode(self):
+        """ A pass-through function to toggle bool with hotkey 
+        """
+        if self.IS_FILAMENTS.get() == True:
+            self.IS_FILAMENTS.set(False)
+        else:
+            self.IS_FILAMENTS.set(True)
+
+        self.draw_image_coordinates()
+        return
+
     def toggle_SHOW_PICKS(self):
         """ A pass-through function to redraw the screen on clicking the bool variable 
         """
@@ -1625,6 +1638,20 @@ class MainUI:
                 ## if a matching star coordinate file was found, use it to read in the coordinates 
                 if (star_coordinate_file != ""):
                     self.coordinates = read_coords_from_star(star_coordinate_file, get_scale_factor(self.mrc_dimensions, self.jpg_dimensions))
+
+                    ## if there is a star file, check if we are in filament mode, we may want to read the filament pixel diameter and update that value
+                    if self.IS_FILAMENTS.get() == True:
+                        table_name = 'data_'
+                        columns = star_handler.get_star_columns_from_table(star_coordinate_file, table_name)
+                        if '_filamentDiameterAngstroms' in columns:
+                            ## find the data value for that column for the first filament
+                            col_values = star_handler.get_column_values_from_table(star_coordinate_file,'data_','_filamentDiameterAngstroms', VERBOSE = False) # -> list()
+                            ## use the first value to overwrite the diameter value widget and internal variable
+                            self.picks_diameter = float(col_values[0])
+                            self.picks_diameter_ENTRY.delete(0, tk.END)
+                            self.picks_diameter_ENTRY.insert(0,self.picks_diameter)
+                            # self.pick_diameter_updated()
+
 
             if (self.SHOW_ALT_PICKS.get()):
                 ## default is same directory as cwd, use that as the null case 
@@ -2016,6 +2043,7 @@ class MainUI:
         # mrc_pixel_size_y = PARAMS['mrc_dimensions'][1]
 
         # avoid bugging out when hitting 'next img' and no image is currently loaded
+
         try:
             current_img_base_name = os.path.splitext(self.image_name)[0]
             save_fname = current_img_base_name + '_CURATED.star'
@@ -2032,6 +2060,8 @@ class MainUI:
                 f.write("_rlnParticleSelectionType #3\n")
                 f.write("_rlnAnglePsi #4\n")
                 f.write("_rlnAutopickFigureOfMerit #5\n")
+                if self.IS_FILAMENTS.get() == True:
+                    f.write("_filamentDiameterAngstroms #6\n")
                 f.write("\n")
 
                 ############
@@ -2046,9 +2076,16 @@ class MainUI:
                     if mrc_coord == 'new_point':
                         #### interpolate .MRC coordinate from .GIF position
                         mrc_x, mrc_y, score = jpg2star(jpg_coord, get_scale_factor(self.mrc_dimensions, self.jpg_dimensions))
-                        f.write("%.2f    %.2f   \t 2     -999.0    %.2f \n" % (mrc_x, mrc_y, score))
+                        if self.IS_FILAMENTS.get() == True:
+                            print(" save diameter length in pixels: ", self.picks_diameter)
+                            f.write("%.2f    %.2f   \t 2     -999.0    %.2f    %s \n" % (mrc_x, mrc_y, score, self.picks_diameter))
+                        else:
+                            f.write("%.2f    %.2f   \t 2     -999.0    %.2f \n" % (mrc_x, mrc_y, score))
                     else: # if point is not new, we can just write the original corresponding mrc_coordinate back into the file
-                        f.write("%.2f    %.2f   \t -999     -999.0    %.2f \n" % (mrc_coord[0], mrc_coord[1], jpg_coord[2]))
+                        if self.IS_FILAMENTS.get() == True:
+                            f.write("%.2f    %.2f   \t -999     -999.0    %.2f    %s \n" % (mrc_coord[0], mrc_coord[1], jpg_coord[2], self.picks_diameter))
+                        else:
+                            f.write("%.2f    %.2f   \t -999     -999.0    %.2f \n" % (mrc_coord[0], mrc_coord[1], jpg_coord[2]))
             print(" Wrote %s particles into star file: %s" % (counter, save_fname))
         except:
             print(" Problem writing starfile")
@@ -2075,6 +2112,7 @@ class MainUI:
             f.write("scale_factor %s\n" % self.scale_factor)
             f.write("sigma_contrast %s\n" % self.sigma_contrast)
             f.write("picks_threshold %s\n" % self.picks_threshold)
+            f.write("filament_mode %s\n" % self.IS_FILAMENTS.get())
             # f.write("particles_file_save_name %s\n" % self.particles_file_save_name)
         print(" >> Saved current settings to '%s'" % save_path)
 
@@ -2094,7 +2132,7 @@ class MainUI:
                         if line2list[0] == 'img_loaded':
                             image_to_load = line2list[1]
                         if line2list[0] == 'picks_diameter':
-                            self.picks_diameter = int(line2list[1])
+                            self.picks_diameter = float(line2list[1])
                         if line2list[0] == 'scale_factor':
                             self.scale_factor = float(line2list[1])
                         if line2list[0] == 'sigma_contrast':
@@ -2105,6 +2143,8 @@ class MainUI:
                             self.pixel_size = float(line2list[1])
                         if line2list[0] == 'mrc_dimensions':
                             self.mrc_dimensions = (int(line2list[1]), int(line2list[2]))
+                        if line2list[0] == 'filament_mode':
+                            self.IS_FILAMENTS.set(bool(line2list[1]))
 
                         # if line2list[0] == 'particles_file_save_name':
                         #     self.particles_file_save_name = line2list[1]
