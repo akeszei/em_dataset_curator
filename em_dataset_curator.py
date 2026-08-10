@@ -1373,7 +1373,7 @@ class MainUI:
         user_input = self.picks_diameter_ENTRY.get().strip()
         ## cast the input to an integer value
         try:
-            user_input = int(user_input)
+            user_input = float(user_input)
         except:
             self.picks_diameter_ENTRY.delete(0, tk.END)
             self.picks_diameter_ENTRY.insert(0,self.picks_diameter)
@@ -1398,7 +1398,7 @@ class MainUI:
         user_input_alt = self.alt_picks_diameter_ENTRY.get().strip()
         ## cast the input to an integer value
         try:
-            user_input_alt = int(user_input_alt)
+            user_input_alt = float(user_input_alt)
         except:
             self.alt_picks_diameter_ENTRY.delete(0, tk.END)
             self.alt_picks_diameter_ENTRY.insert(0,self.alt_picks_diameter)
