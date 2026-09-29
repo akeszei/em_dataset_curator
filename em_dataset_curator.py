@@ -289,7 +289,7 @@ def is_image(file, USE_MRC = False):
     if USE_MRC:
         image_formats = [".mrc"]
     else:
-        image_formats = [".gif", ".jpg", ".jpeg"]
+        image_formats = [".gif", ".jpg", ".jpeg", ".png"]
     for suffix in image_formats:
         if suffix == detected_extension:
             return True
