@@ -1766,7 +1766,7 @@ class MainUI:
         # self.suggested_angpix_LABEL['text'] = "Crop to: ~%.1f Å/px" % suggest_target_angpix(self.picks_diameter)
         # self.MRC_dimensions_LABEL['text'] = "(%s, %s)" % (self.mrc_dimensions)
         # self.MRC_angpix_LABEL['text'] = "%s Å/px" % (self.pixel_size)
-        self.MRC_displayed_angpix_LABEL['text'] = "Display @ %0.2f Å/px" % (get_scale_factor(self.mrc_dimensions, self.jpg_dimensions) * (self.pixel_size / self.scale_factor))
+        self.MRC_displayed_angpix_LABEL['text'] = "Display @ %.4s Å/px" % (get_scale_factor(self.mrc_dimensions, self.jpg_dimensions) * (self.pixel_size / self.scale_factor))
 
         # self.draw_image_coordinates()
 
@@ -1952,7 +1952,7 @@ class MainUI:
         """
         self.scrollable_frame.update() ## update the frame holding the data
         w, h = self.determine_program_dimensions(self.scrollable_frame) ## use the frame data & screen resolution to find a reasonable program size
-        self.instance.geometry("%sx%s" % (w + 24, h + 24)) ## set the main program size using the updated values
+        self.instance.geometry("%sx%s" % (w + 25, h + 25)) ## set the main program size using the updated values
         return
 
     def quit(self):
