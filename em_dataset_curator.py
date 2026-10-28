@@ -961,6 +961,7 @@ class MainUI:
         else:
             self.marked_imgs.remove(self.image_name)
 
+        ## 2026-10-05 NOTE: for speed it would be better to avoid rewriting the image and just updating the mark up... see if I can do that 
         self.load_img(self.image_name, input_im_array = self.display_im_arrays[0]) ## after updating the list, reload the canvas to show a red marker to the user
         return
 
